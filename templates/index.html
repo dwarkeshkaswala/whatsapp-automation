@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - WhatsApp Bot{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Login Status Card -->
+    <div class="login-status-card" id="loginStatusCard">
+        <div class="status-content">
+            <div class="status-icon" id="statusIcon">
+                <i class="fas fa-circle-notch fa-spin"></i>
+            </div>
+            <div class="status-info">
+                <h3 id="statusTitle">Checking Status...</h3>
+                <p id="statusMessage">Please wait</p>
+            </div>
+            <div class="status-actions" id="statusActions">
+                <!-- Buttons will be added dynamically -->
+            </div>
+        </div>
+        
+        <!-- QR Code Display Area -->
+        <div id="qrCodeContainer" style="display: none; text-align: center; margin-top: 20px; padding: 20px; background: #fff; border-radius: 10px;">
+            <h3 style="color: #333; margin-bottom: 15px;">📱 Scan this QR Code with WhatsApp</h3>
+            <img id="qrCodeImage" src="" alt="QR Code" style="max-width: 300px; border: 5px solid #25D366; border-radius: 10px;">
+            <p style="color: #666; margin-top: 15px; font-size: 14px;">
+                Open WhatsApp on your phone → Menu → Linked Devices → Link a Device
+            </p>
+            <button onclick="refreshQRCode()" class="btn btn-primary" style="margin-top: 10px;">
+                <i class="fas fa-sync"></i> Refresh QR Code
+            </button>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <i class="fas fa-envelope"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ stats.total_messages }}</h3>
+                <p>Total Messages</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ stats.sent_messages }}</h3>
+                <p>Sent Successfully</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon red">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ stats.failed_messages }}</h3>
+                <p>Failed</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ stats.total_contacts }}</h3>
+                <p>Total Contacts</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ stats.scheduled_messages }}</h3>
+                <p>Scheduled Messages</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-buttons">
+            <a href="/send" class="action-btn">
+                <i class="fas fa-paper-plane"></i>
+                <span>Send Message</span>
+            </a>
+            <a href="/schedule" class="action-btn">
+                <i class="fas fa-calendar-plus"></i>
+                <span>Schedule Message</span>
+            </a>
+            <a href="/contacts" class="action-btn">
+                <i class="fas fa-user-plus"></i>
+                <span>Add Contact</span>
+            </a>
+            <a href="/automated" class="action-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <i class="fas fa-robot"></i>
+                <span>Automated Bulk Send</span>
+            </a>
+            <a href="/history" class="action-btn">
+                <i class="fas fa-list"></i>
+                <span>View History</span>
+            </a>
+        </div>
+    </div>
+
+
+    <div class="info-section">
+        <h2>🚀 New Feature: Automated Bulk Attachment Sending!</h2>
+        <div class="info-card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid #667eea;">
+            <h3>Send Files to Multiple Contacts - Fully Automated! 🤖</h3>
+            <p><strong>No manual work required!</strong> Just match filenames to contact names and let the system do everything.</p>
+            <ol>
+                <li>Import contacts from CSV (Contacts page)</li>
+                <li>Place files in <code>attachments/</code> folder with names matching your contacts</li>
+                <li>Go to <strong>Automated Bulk</strong> page and click "Scan"</li>
+                <li>Review matches and click "Start Automated Send"</li>
+            </ol>
+            <p><strong>Example:</strong> File "John Doe.pdf" → automatically sent to contact "John Doe"</p>
+            <a href="/automated" class="btn btn-primary" style="margin-top: 10px;">
+                <i class="fas fa-robot"></i> Try Automated Bulk Send
+            </a>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h2>Getting Started</h2>
+        <div class="info-card">
+            <ol>
+                <li>Click "Initialize Bot" to start the WhatsApp Web session</li>
+                <li>Scan the QR code with your WhatsApp mobile app</li>
+                <li>Once logged in, you can send messages individually or in bulk</li>
+                <li>Add contacts to your address book for easy access</li>
+                <li>Schedule messages to be sent at a specific time</li>
+                <li><strong>NEW:</strong> Use Automated Bulk to send files automatically by matching filenames!</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<script>
+let qrCheckInterval = null;
+let isInitializing = false;
+
+// Check login status on page load
+async function checkLoginStatus() {
+    try {
+        const response = await fetch('/api/check-login');
+        const data = await response.json();
+        
+        const statusIcon = document.getElementById('statusIcon');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusActions = document.getElementById('statusActions');
+        const loginCard = document.getElementById('loginStatusCard');
+        const qrContainer = document.getElementById('qrCodeContainer');
+        
+        if (data.logged_in) {
+            // User is logged in
+            loginCard.classList.add('status-success');
+            loginCard.classList.remove('status-warning', 'status-error');
+            statusIcon.innerHTML = '<i class="fas fa-check-circle"></i>';
+            statusTitle.textContent = 'Connected to WhatsApp';
+            statusMessage.textContent = 'You are successfully logged in and ready to send messages!';
+            statusActions.innerHTML = '';
+            qrContainer.style.display = 'none';
+            
+            // Stop QR code checking
+            if (qrCheckInterval) {
+                clearInterval(qrCheckInterval);
+                qrCheckInterval = null;
+            }
+        } else if (data.status === 'waiting_for_scan') {
+            // Bot initialized, waiting for QR scan
+            loginCard.classList.add('status-warning');
+            loginCard.classList.remove('status-success', 'status-error');
+            statusIcon.innerHTML = '<i class="fas fa-qrcode"></i>';
+            statusTitle.textContent = 'Scan QR Code';
+            statusMessage.textContent = 'Scan the QR code below with your WhatsApp mobile app';
+            statusActions.innerHTML = '';
+            
+            // Get QR code
+            await fetchAndDisplayQR();
+        } else {
+            // Bot not initialized
+            loginCard.classList.add('status-error');
+            loginCard.classList.remove('status-success', 'status-warning');
+            statusIcon.innerHTML = '<i class="fas fa-power-off"></i>';
+            statusTitle.textContent = 'Not Connected';
+            statusMessage.textContent = 'Click below to start the bot and get QR code';
+            qrContainer.style.display = 'none';
+            statusActions.innerHTML = `
+                <button onclick="initializeBot()" class="btn btn-success" ${isInitializing ? 'disabled' : ''}>
+                    <i class="fas fa-play"></i> ${isInitializing ? 'Initializing...' : 'Initialize Bot'}
+                </button>
+            `;
+        }
+    } catch (error) {
+        console.error('Error checking login status:', error);
+    }
+}
+
+async function fetchAndDisplayQR() {
+    try {
+        const response = await fetch('/api/get-qr-code');
+        const data = await response.json();
+        
+        const qrContainer = document.getElementById('qrCodeContainer');
+        const qrImage = document.getElementById('qrCodeImage');
+        
+        if (data.status === 'qr_ready' && data.qr) {
+            // Add data URI prefix for base64 image
+            qrImage.src = 'data:image/png;base64,' + data.qr;
+            qrContainer.style.display = 'block';
+        } else if (data.status === 'logged_in') {
+            qrContainer.style.display = 'none';
+            checkLoginStatus();
+        } else if (data.status === 'loading' || data.status === 'waiting') {
+            // Still loading, wait and retry
+            qrContainer.innerHTML = `
+                <div style="text-align: center; padding: 50px;">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size: 48px; color: #25D366;"></i>
+                    <p style="margin-top: 15px; color: #666;">Loading QR code...</p>
+                </div>
+            `;
+            qrContainer.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error fetching QR code:', error);
+    }
+}
+
+async function refreshQRCode() {
+    const qrImage = document.getElementById('qrCodeImage');
+    qrImage.style.opacity = '0.5';
+    
+    await fetchAndDisplayQR();
+    
+    qrImage.style.opacity = '1';
+}
+
+async function initializeBot() {
+    if (isInitializing) return;
+    
+    isInitializing = true;
+    const statusActions = document.getElementById('statusActions');
+    statusActions.innerHTML = `
+        <button class="btn btn-success" disabled>
+            <i class="fas fa-circle-notch fa-spin"></i> Initializing...
+        </button>
+    `;
+    
+    try {
+        const response = await fetch('/api/initialize-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ headless: true })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Bot started! Loading QR code...', 'success');
+            
+            // Wait a moment for WhatsApp to load
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Start checking for QR code and login status
+            await checkLoginStatus();
+            
+            // Start interval to check login status
+            if (!qrCheckInterval) {
+                qrCheckInterval = setInterval(async () => {
+                    const loginResponse = await fetch('/api/check-login');
+                    const loginData = await loginResponse.json();
+                    
+                    if (loginData.logged_in) {
+                        clearInterval(qrCheckInterval);
+                        qrCheckInterval = null;
+                        checkLoginStatus();
+                        showAlert('Successfully connected to WhatsApp!', 'success');
+                    } else {
+                        // Refresh QR code periodically (QR codes expire)
+                        await fetchAndDisplayQR();
+                    }
+                }, 5000);
+            }
+        } else {
+            showAlert(data.error || 'Failed to initialize bot', 'error');
+        }
+    } catch (error) {
+        showAlert('Failed to initialize bot: ' + error.message, 'error');
+    } finally {
+        isInitializing = false;
+    }
+}
+
+// Check login status on page load
+checkLoginStatus();
+</script>
+{% endblock %}
+

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Message History - WhatsApp Bot{% endblock %}
+{% block page_title %}Message History{% endblock %}
+
+{% block content %}
+<div class="history-page">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Phone Number</th>
+                        <th>Message</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if history %}
+                        {% for msg in history %}
+                        <tr>
+                            <td>{{ msg.created_at }}</td>
+                            <td>{{ msg.phone }}</td>
+                            <td>{{ msg.message[:50] }}{% if msg.message|length > 50 %}...{% endif %}</td>
+                            <td>
+                                <span class="badge badge-{{ msg.status }}">
+                                    {% if msg.status == 'sent' %}
+                                        <i class="fas fa-check"></i> Sent
+                                    {% elif msg.status == 'failed' %}
+                                        <i class="fas fa-times"></i> Failed
+                                    {% else %}
+                                        <i class="fas fa-clock"></i> {{ msg.status }}
+                                    {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">No message history</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Messages - WhatsApp Bot{% endblock %}
+{% block page_title %}Schedule Messages{% endblock %}
+
+{% block content %}
+<div class="schedule-page">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <h3>Schedule New Message</h3>
+                <form id="scheduleForm">
+                    <div class="form-group">
+                        <label for="schedulePhone">Phone Number</label>
+                        <select id="schedulePhone" name="phone" class="form-control" required>
+                            <option value="">Select a contact or enter manually</option>
+                            {% for contact in contacts %}
+                            <option value="{{ contact.phone }}">{{ contact.name }} ({{ contact.phone }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scheduleMessage">Message</label>
+                        <textarea id="scheduleMessage" name="message" class="form-control" 
+                                  rows="4" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scheduledTime">Scheduled Time</label>
+                        <input type="datetime-local" id="scheduledTime" name="scheduled_time" 
+                               class="form-control" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-clock"></i> Schedule Message
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <h3>Scheduled Messages</h3>
+                <div class="scheduled-list">
+                    {% if scheduled %}
+                        {% for msg in scheduled %}
+                        <div class="scheduled-item">
+                            <div class="scheduled-info">
+                                <strong>{{ msg.phone }}</strong>
+                                <p>{{ msg.message[:50] }}{% if msg.message|length > 50 %}...{% endif %}</p>
+                                <small>
+                                    <i class="fas fa-clock"></i> {{ msg.scheduled_time }}
+                                    <span class="badge badge-{{ msg.status }}">{{ msg.status }}</span>
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No scheduled messages</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/schedule.js') }}"></script>
+{% endblock %}

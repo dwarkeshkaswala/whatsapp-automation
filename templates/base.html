@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WhatsApp Message Sender Bot{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i class="fab fa-whatsapp"></i>
+                <h2>WhatsApp Bot</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/" class="{% if request.path == '/' %}active{% endif %}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a></li>
+                <li><a href="/send" class="{% if request.path == '/send' %}active{% endif %}">
+                    <i class="fas fa-paper-plane"></i> Send Message
+                </a></li>
+                <li><a href="/schedule" class="{% if request.path == '/schedule' %}active{% endif %}">
+                    <i class="fas fa-clock"></i> Schedule
+                </a></li>
+                <li><a href="/contacts" class="{% if request.path == '/contacts' %}active{% endif %}">
+                    <i class="fas fa-address-book"></i> Contacts
+                </a></li>
+                <li><a href="/automated" class="{% if request.path == '/automated' %}active{% endif %}">
+                    <i class="fas fa-robot"></i> Automated Bulk
+                </a></li>
+                <li><a href="/history" class="{% if request.path == '/history' %}active{% endif %}">
+                    <i class="fas fa-history"></i> History
+                </a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="closeBotBtn" class="btn btn-danger btn-block">
+                    <i class="fas fa-times-circle"></i> Close Browser
+                </button>
+                <small style="color: rgba(255,255,255,0.6); text-align: center; display: block; margin-top: 10px; font-size: 11px;">
+                    Use Dashboard to connect
+                </small>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="header">
+                <h1>{% block page_title %}{% endblock %}</h1>
+            </div>
+            
+            <div id="alertContainer"></div>
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

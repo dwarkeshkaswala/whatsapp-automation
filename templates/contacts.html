@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Contacts - WhatsApp Bot{% endblock %}
+{% block page_title %}Manage Contacts{% endblock %}
+
+{% block content %}
+<div class="contacts-page">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <h3>Add New Contact</h3>
+                <form id="addContactForm">
+                    <div class="form-group">
+                        <label for="contactName">Name</label>
+                        <input type="text" id="contactName" name="name" class="form-control" 
+                               placeholder="John Doe" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contactPhone">Phone Number</label>
+                        <input type="tel" id="contactPhone" name="phone" class="form-control" 
+                               placeholder="+1234567890" required>
+                        <small>Include country code</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Contact
+                    </button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>Import from CSV</h3>
+                <form id="importCsvForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="csvFile">Upload CSV File</label>
+                        <input type="file" id="csvFile" name="file" class="form-control" 
+                               accept=".csv" required>
+                        <small>CSV should have columns: name, phone</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-file-upload"></i> Import Contacts
+                    </button>
+                </form>
+                
+                <div class="csv-info">
+                    <p><strong>CSV Format Example:</strong></p>
+                    <pre>name,phone
+John Doe,+1234567890
+Jane Smith,+9876543210</pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <h3>Your Contacts ({{ contacts|length }})</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Added On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contactsTable">
+                            {% if contacts %}
+                                {% for contact in contacts %}
+                                <tr data-id="{{ contact.id }}">
+                                    <td>{{ contact.name }}</td>
+                                    <td>{{ contact.phone }}</td>
+                                    <td>{{ contact.created_at }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger delete-contact" 
+                                                data-id="{{ contact.id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">No contacts found</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/contacts.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Automated Bulk Send - WhatsApp Automation{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>🤖 Automated Bulk Send</h1>
+    <p>Automatically send attachments to contacts by matching filenames</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>📁 How It Works</h2>
+    </div>
+    <div class="card-body">
+        <div class="info-box info">
+            <h3>Automatic File Matching</h3>
+            <ol>
+                <li>Place files in the <code>attachments/</code> folder</li>
+                <li>Name files to match your contacts (e.g., "John Doe.pdf" → sends to contact "John Doe")</li>
+                <li>Click "Scan Attachments" to preview matches</li>
+                <li>Click "Start Automated Send" to send all matched files automatically</li>
+            </ol>
+            <p><strong>Supported formats:</strong> PNG, JPG, JPEG, GIF, PDF, DOCX, XLSX, TXT, ZIP</p>
+            <p><strong>Unicode Support:</strong> ✅ Gujarati, Hindi, and all Unicode languages work perfectly!</p>
+            <p><em>Example: File "દ્વારકેશ.pdf" will match contact "દ્વારકેશ"</em></p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>🔍 Preview Matches</h2>
+    </div>
+    <div class="card-body">
+        <button id="scanBtn" class="btn btn-primary">📊 Scan Attachments Folder</button>
+        
+        <div id="scanResults" style="display: none; margin-top: 20px;">
+            <div class="info-box success" id="statsBox">
+                <h3>📈 Statistics</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
+                    <div>
+                        <strong>Total Contacts:</strong> <span id="totalContacts">0</span>
+                    </div>
+                    <div>
+                        <strong>Total Files:</strong> <span id="totalFiles">0</span>
+                    </div>
+                    <div>
+                        <strong>Matched:</strong> <span id="matchedCount" style="color: #27ae60;">0</span>
+                    </div>
+                    <div>
+                        <strong>Unmatched Contacts:</strong> <span id="unmatchedContacts" style="color: #e74c3c;">0</span>
+                    </div>
+                    <div>
+                        <strong>Unmatched Files:</strong> <span id="unmatchedFiles" style="color: #f39c12;">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="matchedSection" style="margin-top: 20px;">
+                <h3>✅ Matched Files → Contacts</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Contact Name</th>
+                                <th>Phone</th>
+                                <th>File</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matchedTable">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="unmatchedContactsSection" style="margin-top: 20px; display: none;">
+                <div class="info-box warning">
+                    <h3>⚠️ Unmatched Contacts</h3>
+                    <p>These contacts have no matching files in the attachments folder:</p>
+                    <ul id="unmatchedContactsList"></ul>
+                </div>
+            </div>
+            
+            <div id="unmatchedFilesSection" style="margin-top: 20px; display: none;">
+                <div class="info-box warning">
+                    <h3>📄 Unmatched Files</h3>
+                    <p>These files don't match any contacts:</p>
+                    <ul id="unmatchedFilesList"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>🚀 Start Automation</h2>
+    </div>
+    <div class="card-body">
+        <form id="autoSendForm">
+            <div class="form-group">
+                <label for="message">Message (Optional)</label>
+                <textarea 
+                    id="message" 
+                    name="message" 
+                    rows="3" 
+                    placeholder="Enter a message to send with attachments (optional)"
+                ></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="delay">Delay Between Messages (seconds)</label>
+                <input 
+                    type="number" 
+                    id="delay" 
+                    name="delay" 
+                    value="5" 
+                    min="1" 
+                    max="30"
+                    required
+                >
+                <small>Recommended: 5-10 seconds to avoid spam detection</small>
+            </div>
+            
+            <button type="submit" class="btn btn-success" id="startBtn">
+                🤖 Start Automated Send
+            </button>
+        </form>
+        
+        <div id="progressSection" style="display: none; margin-top: 20px;">
+            <div class="info-box info">
+                <h3>⏳ Sending in progress...</h3>
+                <div style="background: #2c3e50; border-radius: 8px; padding: 10px; margin-top: 10px;">
+                    <div style="background: #27ae60; height: 30px; border-radius: 5px; width: 0%; transition: width 0.3s;" id="progressBar"></div>
+                </div>
+                <p id="progressText" style="margin-top: 10px;">Starting...</p>
+            </div>
+        </div>
+        
+        <div id="resultsSection" style="display: none; margin-top: 20px;">
+            <div class="info-box success" id="resultsBox">
+                <h3>✨ Results</h3>
+                <div id="resultsSummary" style="margin: 15px 0;"></div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Contact</th>
+                                <th>Phone</th>
+                                <th>File</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTable">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/automated.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Send Message - WhatsApp Bot{% endblock %}
+{% block page_title %}Send WhatsApp Message{% endblock %}
+
+{% block content %}
+<div class="send-page">
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="single">Single Message</button>
+        <button class="tab-btn" data-tab="bulk">Bulk Messages</button>
+        <button class="tab-btn" data-tab="attachment">With Attachment</button>
+    </div>
+
+    <!-- Single Message Tab -->
+    <div id="singleTab" class="tab-content active">
+        <div class="card">
+            <form id="singleMessageForm">
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone" class="form-control" 
+                           placeholder="+1234567890" required>
+                    <small>Include country code (e.g., +1 for US, +91 for India)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" class="form-control" 
+                              rows="6" placeholder="Enter your message here..." required></textarea>
+                    <small>Character count: <span id="charCount">0</span></small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> Send Message
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Messages Tab -->
+    <div id="bulkTab" class="tab-content">
+        <div class="card">
+            <form id="bulkMessageForm">
+                <div class="form-group">
+                    <label>Select Contacts</label>
+                    <div class="contacts-list" id="contactsList">
+                        {% if contacts %}
+                            {% for contact in contacts %}
+                            <div class="contact-item">
+                                <input type="checkbox" name="contacts" value="{{ contact.phone }}" 
+                                       id="contact_{{ contact.id }}">
+                                <label for="contact_{{ contact.id }}">
+                                    {{ contact.name }} ({{ contact.phone }})
+                                </label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No contacts found. <a href="/contacts">Add contacts</a> to send bulk messages.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="bulkMessage">Message</label>
+                    <textarea id="bulkMessage" name="message" class="form-control" 
+                              rows="6" placeholder="Enter your message here..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="delay">Delay Between Messages (seconds)</label>
+                    <input type="number" id="delay" name="delay" class="form-control" 
+                           value="5" min="1" max="60">
+                    <small>Recommended: 5-10 seconds to avoid spam detection</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> Send Bulk Messages
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Attachment Tab -->
+    <div id="attachmentTab" class="tab-content">
+        <div class="card">
+            <form id="attachmentForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="attachmentPhone">Phone Number</label>
+                    <input type="tel" id="attachmentPhone" name="phone" class="form-control" 
+                           placeholder="+1234567890" required>
+                    <small>Include country code</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="attachmentMessage">Message (Optional)</label>
+                    <textarea id="attachmentMessage" name="message" class="form-control" 
+                              rows="4" placeholder="Enter caption for the attachment..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="attachment">Select File</label>
+                    <input type="file" id="attachment" name="file" class="form-control" required>
+                    <small>Supported: Images, Videos, PDFs, Documents (Max 100MB)</small>
+                </div>
+
+                <div id="filePreview" class="file-preview"></div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paperclip"></i> Send with Attachment
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/send.js') }}"></script>
+{% endblock %}
