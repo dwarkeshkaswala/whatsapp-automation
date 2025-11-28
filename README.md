@@ -1,12 +1,12 @@
-# WhatsApp Automation Bot# WhatsApp Automation Bot# 🚀 WhatsApp Message Sender Bot
+# 🚀 WhatsApp Message Sender Bot# WhatsApp Automation Bot# WhatsApp Automation Bot# 🚀 WhatsApp Message Sender Bot
 
 
 
-A professional WhatsApp Web automation tool with a user-friendly web interface. Send messages, attachments, and bulk communications programmatically.
+A professional web-based WhatsApp automation bot built with Python, Flask, and Selenium. Send individual or bulk messages, schedule messages, and manage contacts through an intuitive web interface.
 
 
 
-![WhatsApp Bot](https://img.shields.io/badge/WhatsApp-Bot-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)A professional WhatsApp Web automation tool with a user-friendly web interface. Send messages, attachments, and bulk communications programmatically.A professional web-based WhatsApp automation bot built with Python, Flask, and Selenium. Send individual or bulk messages, schedule messages, and manage contacts through an intuitive web interface.
+![WhatsApp Bot](https://img.shields.io/badge/WhatsApp-Bot-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)A professional WhatsApp Web automation tool with a user-friendly web interface. Send messages, attachments, and bulk communications programmatically.
 
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 
@@ -14,151 +14,312 @@ A professional WhatsApp Web automation tool with a user-friendly web interface. 
 
 ![Selenium](https://img.shields.io/badge/Selenium-4.15-43B02A?style=for-the-badge&logo=selenium&logoColor=white)
 
-## ✨ Features![WhatsApp Bot](https://img.shields.io/badge/WhatsApp-Bot-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)
+![WhatsApp Bot](https://img.shields.io/badge/WhatsApp-Bot-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)A professional WhatsApp Web automation tool with a user-friendly web interface. Send messages, attachments, and bulk communications programmatically.A professional web-based WhatsApp automation bot built with Python, Flask, and Selenium. Send individual or bulk messages, schedule messages, and manage contacts through an intuitive web interface.
 
 ## ✨ Features
 
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 
-- 📱 **Send Text Messages** - Single or bulk message sending
+- 📱 **Send Individual Messages** - Send WhatsApp messages to any phone number
 
-- 📎 **Send Attachments** - Documents, images, videos with captions- 📱 **Send Text Messages** - Single or bulk message sending![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=for-the-badge&logo=flask&logoColor=white)
+- 📢 **Bulk Messaging** - Send the same message to multiple contacts with customizable delays![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=for-the-badge&logo=flask&logoColor=white)
+
+- 🤖 **Automated Bulk Attachments** - Automatically send files to contacts by matching filenames
+
+- ⏰ **Message Scheduling** - Schedule messages to be sent at a specific date and time![Selenium](https://img.shields.io/badge/Selenium-4.15-43B02A?style=for-the-badge&logo=selenium&logoColor=white)
+
+- 👥 **Contact Management** - Store and manage your contacts in a built-in address book
+
+- 📁 **CSV Import** - Import contacts in bulk from CSV files## ✨ Features![WhatsApp Bot](https://img.shields.io/badge/WhatsApp-Bot-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)
+
+- 📎 **Send Attachments** - Send images, videos, documents, and other files
+
+- 📜 **Message History** - Track all sent messages with status (sent/failed)## ✨ Features
+
+- 📈 **Dashboard Analytics** - View statistics of messages sent, failed, and scheduled
+
+- 🎨 **Modern UI** - Professional, responsive web interface with dark sidebar![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+
+- 💾 **SQLite Database** - Persistent storage for contacts, messages, and schedules
+
+- 🔄 **Persistent Sessions** - Stay logged in to WhatsApp Web between restarts- 📱 **Send Text Messages** - Single or bulk message sending
+
+- 🌐 **Unicode Support** - Full support for Gujarati, Hindi, and other languages
+
+- 🖥️ **Cross-Platform** - Works on macOS, Windows, and Linux- 📎 **Send Attachments** - Documents, images, videos with captions- 📱 **Send Text Messages** - Single or bulk message sending![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=for-the-badge&logo=flask&logoColor=white)
+
+- 🌍 **Multi-Browser** - Supports Chrome, Brave, Firefox, Edge
 
 - 📋 **CSV Import** - Import contacts from CSV files
 
+## 📁 Project Structure
+
 - 🔄 **Auto-Match** - Automatically match files to contacts by name- 📎 **Send Attachments** - Documents, images, videos with captions![Selenium](https://img.shields.io/badge/Selenium-4.15-43B02A?style=for-the-badge&logo=selenium&logoColor=white)
-
-- 📅 **Schedule Messages** - Schedule messages for later delivery
-
-- 🌐 **Unicode Support** - Full support for Gujarati and other languages- 📋 **CSV Import** - Import contacts from CSV files
-
-- 🖥️ **Cross-Platform** - Works on macOS, Windows, and Linux
-
-- 🌍 **Multi-Browser** - Supports Chrome, Brave, Firefox, Edge- 🔄 **Auto-Match** - Automatically match files to contacts by name## ✨ Features
-
-- 💾 **Persistent Sessions** - Stay logged in between restarts
-
-- 📈 **Dashboard Analytics** - Track sent/failed messages- 📅 **Schedule Messages** - Schedule messages for later delivery
-
-
-
-## 🚀 Quick Start- 🌐 **Unicode Support** - Full support for Gujarati and other languages- 📱 **Send Individual Messages** - Send WhatsApp messages to any phone number
-
-
-
-### One-Command Setup- 🖥️ **Cross-Platform** - Works on macOS, Windows, and Linux- 📢 **Bulk Messaging** - Send the same message to multiple contacts with customizable delays
-
-
-
-**macOS/Linux:**- 🌍 **Multi-Browser** - Supports Chrome, Brave, Firefox, Edge- 🤖 **Automated Bulk Attachments** - Automatically send files to contacts by matching filenames (FULLY AUTOMATED!)
-
-```bash
-
-python3 setup.py && ./run.sh- ⏰ **Message Scheduling** - Schedule messages to be sent at a specific date and time
 
 ```
 
-## 🚀 Quick Start- 👥 **Contact Management** - Store and manage your contacts in a built-in address book
+whatsapp-automation/- 📅 **Schedule Messages** - Schedule messages for later delivery
 
-**Windows:**
+├── app.py                 # Main Flask application
 
-```cmd- 📁 **CSV Import** - Import contacts in bulk from CSV files
+├── setup.py               # Universal installer script- 🌐 **Unicode Support** - Full support for Gujarati and other languages- 📋 **CSV Import** - Import contacts from CSV files
 
-python setup.py && run.bat
+├── run.sh                 # macOS/Linux start script
+
+├── run.bat                # Windows start script- 🖥️ **Cross-Platform** - Works on macOS, Windows, and Linux
+
+├── requirements.txt       # Python dependencies
+
+├── .env.example           # Environment variables template- 🌍 **Multi-Browser** - Supports Chrome, Brave, Firefox, Edge- 🔄 **Auto-Match** - Automatically match files to contacts by name## ✨ Features
+
+├── src/                   # Source code
+
+│   ├── __init__.py- 💾 **Persistent Sessions** - Stay logged in between restarts
+
+│   ├── whatsapp_bot.py    # Selenium WhatsApp automation
+
+│   └── database.py        # SQLite database operations- 📈 **Dashboard Analytics** - Track sent/failed messages- 📅 **Schedule Messages** - Schedule messages for later delivery
+
+├── data/                  # Data files
+
+│   ├── sample_contacts.csv
+
+│   └── sample_contacts_gujarati.csv
+
+├── static/                # Static assets## 🚀 Quick Start- 🌐 **Unicode Support** - Full support for Gujarati and other languages- 📱 **Send Individual Messages** - Send WhatsApp messages to any phone number
+
+│   ├── css/
+
+│   ├── js/
+
+│   └── images/
+
+├── templates/             # HTML templates### One-Command Setup- 🖥️ **Cross-Platform** - Works on macOS, Windows, and Linux- 📢 **Bulk Messaging** - Send the same message to multiple contacts with customizable delays
+
+│   ├── base.html
+
+│   ├── index.html
+
+│   ├── send.html
+
+│   ├── contacts.html**macOS/Linux:**- 🌍 **Multi-Browser** - Supports Chrome, Brave, Firefox, Edge- 🤖 **Automated Bulk Attachments** - Automatically send files to contacts by matching filenames (FULLY AUTOMATED!)
+
+│   ├── automated.html
+
+│   ├── schedule.html```bash
+
+│   └── history.html
+
+├── attachments/           # Files to send (auto-match by filename)python3 setup.py && ./run.sh- ⏰ **Message Scheduling** - Schedule messages to be sent at a specific date and time
+
+└── uploads/               # Uploaded CSV files
+
+``````
+
+
+
+## 🚀 Quick Start## 🚀 Quick Start- 👥 **Contact Management** - Store and manage your contacts in a built-in address book
+
+
+
+### One-Command Setup**Windows:**
+
+
+
+**macOS/Linux:**```cmd- 📁 **CSV Import** - Import contacts in bulk from CSV files
+
+```bash
+
+python3 setup.py && ./run.shpython setup.py && run.bat
+
+```
 
 ```### One-Command Setup- 📎 **Send Attachments** - Send images, videos, documents, and other files
 
-
-
-### Manual Setup- � **Message History** - Track all sent messages with status (sent/failed)
-
-
-
-1. **Clone the repository:****macOS/Linux:**- 📈 **Dashboard Analytics** - View statistics of messages sent, failed, and scheduled
-
-   ```bash
-
-   git clone https://github.com/dwarkeshkaswala/whatsapp-automation.git```bash- 🎨 **Modern UI** - Professional, responsive web interface with dark sidebar
-
-   cd whatsapp-automation
-
-   ```python3 setup.py && ./run.sh- 💾 **SQLite Database** - Persistent storage for contacts, messages, and schedules
-
-
-
-2. **Create virtual environment:**```- 🔄 **Persistent Sessions** - Stay logged in to WhatsApp Web between restarts
-
-   ```bash
-
-   python3 -m venv venv
-
-   source venv/bin/activate  # Mac/Linux
-
-   venv\Scripts\activate     # Windows**Windows:**## 🛠️ Technologies Used
-
-   ```
+**Windows:**
 
 ```cmd
 
-3. **Install dependencies:**
+python setup.py && run.bat
 
-   ```bashpython setup.py && run.bat- **Backend**: Python 3.8+, Flask
-
-   pip install -r requirements.txt
-
-   ``````- **Automation**: Selenium WebDriver
+```### Manual Setup- � **Message History** - Track all sent messages with status (sent/failed)
 
 
 
-4. **Start the application:**- **Database**: SQLite3
+### Manual Setup
+
+
+
+1. **Clone the repository:**1. **Clone the repository:****macOS/Linux:**- 📈 **Dashboard Analytics** - View statistics of messages sent, failed, and scheduled
 
    ```bash
 
-   python app.py### Manual Setup- **Frontend**: HTML5, CSS3, JavaScript
+   git clone https://github.com/dwarkeshkaswala/whatsapp-automation.git   ```bash
+
+   cd whatsapp-automation
+
+   ```   git clone https://github.com/dwarkeshkaswala/whatsapp-automation.git```bash- 🎨 **Modern UI** - Professional, responsive web interface with dark sidebar
+
+
+
+2. **Create virtual environment:**   cd whatsapp-automation
+
+   ```bash
+
+   python3 -m venv venv   ```python3 setup.py && ./run.sh- 💾 **SQLite Database** - Persistent storage for contacts, messages, and schedules
+
+   source venv/bin/activate  # Mac/Linux
+
+   venv\Scripts\activate     # Windows
 
    ```
 
-- **Scheduling**: APScheduler
+2. **Create virtual environment:**```- 🔄 **Persistent Sessions** - Stay logged in to WhatsApp Web between restarts
+
+3. **Install dependencies:**
+
+   ```bash   ```bash
+
+   pip install -r requirements.txt
+
+   ```   python3 -m venv venv
+
+
+
+4. **Run the application:**   source venv/bin/activate  # Mac/Linux
+
+   ```bash
+
+   python app.py   venv\Scripts\activate     # Windows**Windows:**## 🛠️ Technologies Used
+
+   ```
+
+   ```
 
 5. **Open in browser:**
 
-   ```1. **Clone the repository:**- **Browser Automation**: Chrome/Chromium/Brave with WebDriver Manager
+   ``````cmd
 
    http://localhost:5001
 
-   ```   ```bash
+   ```3. **Install dependencies:**
 
 
 
-## 📋 Requirements   git clone https://github.com/dwarkeshkaswala/whatsapp-automation.git## 📋 Prerequisites
+## 🌍 Browser Support   ```bashpython setup.py && run.bat- **Backend**: Python 3.8+, Flask
 
 
+
+The bot automatically detects and uses available browsers in this order:   pip install -r requirements.txt
+
+
+
+| Browser | macOS | Windows | Linux |   ``````- **Automation**: Selenium WebDriver
+
+|---------|-------|---------|-------|
+
+| Chrome  | ✅    | ✅      | ✅    |
+
+| Brave   | ✅    | ✅      | ✅    |
+
+| Firefox | ✅    | ✅      | ✅    |4. **Start the application:**- **Database**: SQLite3
+
+| Edge    | ❌    | ✅      | ✅    |
+
+   ```bash
+
+## 📱 Usage
+
+   python app.py### Manual Setup- **Frontend**: HTML5, CSS3, JavaScript
+
+### First Time Setup
+
+1. Start the application   ```
+
+2. Click "Initialize WhatsApp" on the dashboard
+
+3. Scan the QR code with your WhatsApp mobile app- **Scheduling**: APScheduler
+
+4. Session persists - no need to scan again!
+
+5. **Open in browser:**
+
+### Sending Messages
+
+1. Go to **Send Message** page   ```1. **Clone the repository:**- **Browser Automation**: Chrome/Chromium/Brave with WebDriver Manager
+
+2. Enter phone number (with country code, e.g., +919876543210)
+
+3. Type your message   http://localhost:5001
+
+4. Optionally attach a file
+
+5. Click Send   ```   ```bash
+
+
+
+### Bulk Messaging
+
+1. Go to **Contacts** page
+
+2. Import contacts from CSV or add manually## 📋 Requirements   git clone https://github.com/dwarkeshkaswala/whatsapp-automation.git## 📋 Prerequisites
+
+3. Go to **Send Message** page
+
+4. Select "Send to All Contacts"
+
+5. Set delay between messages (recommended: 5-10 seconds)
 
 - **Python 3.8+**   cd whatsapp-automation
 
-- **One of these browsers:**
+### Automated Attachments
 
-  - Google Chrome   ```Before you begin, ensure you have the following installed:
+1. Place files in the `attachments/` folder- **One of these browsers:**
+
+2. Name files to match contact names (e.g., `John.pdf`, `Jane.docx`)
+
+3. Go to **Automated** page  - Google Chrome   ```Before you begin, ensure you have the following installed:
+
+4. Click "Send to All" - files auto-match to contacts!
 
   - Brave Browser
 
-  - Mozilla Firefox
+### CSV Format
 
-  - Microsoft Edge
+```csv  - Mozilla Firefox
 
-2. **Run setup:**- Python 3.8 or higher
+name,phone
 
-## 🔧 Configuration
+John Doe,+919876543210  - Microsoft Edge
 
-   ```bash- Google Chrome, Chromium, or Brave browser
+Jane Smith,+918765432109
 
-Edit `.env` file to customize:
+```2. **Run setup:**- Python 3.8 or higher
 
-   python setup.py- pip (Python package manager)
 
-```env
 
-HOST=0.0.0.0   ```
+## ⚠️ Disclaimer## 🔧 Configuration
+
+
+
+This tool is for educational purposes only. Use responsibly and in accordance with WhatsApp's Terms of Service. Automated messaging may result in account restrictions.   ```bash- Google Chrome, Chromium, or Brave browser
+
+
+
+## 📄 LicenseEdit `.env` file to customize:
+
+
+
+MIT License - see LICENSE file for details.   python setup.py- pip (Python package manager)
+
+
+
+## 🤝 Contributing```env
+
+
+
+Contributions are welcome! Please feel free to submit a Pull Request.HOST=0.0.0.0   ```
+
 
 PORT=5001
 

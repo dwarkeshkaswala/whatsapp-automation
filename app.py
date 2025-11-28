@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 from datetime import datetime
 import json
 from werkzeug.utils import secure_filename
-from whatsapp_bot import WhatsAppBot
-from database import Database
+from src.whatsapp_bot import WhatsAppBot
+from src.database import Database
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Load environment variables
@@ -20,6 +20,7 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-product
 # Configure upload folder
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 ATTACHMENTS_FOLDER = os.path.join(os.getcwd(), 'attachments')
+DATA_FOLDER = os.path.join(os.getcwd(), 'data')
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'csv', 'xlsx', 'mp4', 'mp3', 'zip'}
 ALLOWED_CSV_EXTENSIONS = {'csv'}
 
@@ -27,13 +28,15 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 if not os.path.exists(ATTACHMENTS_FOLDER):
     os.makedirs(ATTACHMENTS_FOLDER)
+if not os.path.exists(DATA_FOLDER):
+    os.makedirs(DATA_FOLDER)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ATTACHMENTS_FOLDER'] = ATTACHMENTS_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB max file size
 
-# Initialize database
-db = Database()
+# Initialize database in data folder
+db = Database(os.path.join(DATA_FOLDER, 'whatsapp_bot.db'))
 
 # Initialize scheduler
 scheduler = BackgroundScheduler()

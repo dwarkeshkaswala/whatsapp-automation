@@ -52,7 +52,6 @@ geckodriver
 Thumbs.db
 
 # Session data
-session/
 whatsapp_profile/
 firefox_profile/
 
@@ -62,5 +61,7 @@ uploads/
 # Attachments
 attachments/
 
-*.csv
-!sample_contacts.csv
+# Data (except samples)
+data/*.db
+!data/sample_contacts.csv
+!data/sample_contacts_gujarati.csv

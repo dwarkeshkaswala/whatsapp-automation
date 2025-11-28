@@ -62,7 +62,8 @@ class WhatsAppBot:
         self.is_headless = False
         self.browser_type = None
         self.system = platform.system()
-        self.base_dir = Path(__file__).parent.absolute()
+        # base_dir is the project root (parent of src/)
+        self.base_dir = Path(__file__).parent.parent.absolute()
         
     def _get_browser_path(self, browser_type):
         paths = self.BROWSER_PATHS.get(self.system, {}).get(browser_type, [])
