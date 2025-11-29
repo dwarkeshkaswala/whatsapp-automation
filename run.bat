@@ -1,52 +1,101 @@
-@echo off@echo off
+@echo off@echo off@echo off
 
-chcp 65001 >nul 2>&1REM WhatsApp Automation - Start Script (Windows)
+chcp 65001 >nul 2>&1
+
+REM WhatsApp Automation - Run Script (Windows)chcp 65001 >nul 2>&1REM WhatsApp Automation - Start Script (Windows)
+
+REM Keeps running in background with auto-restart
 
 REM WhatsApp Automation - Start Script (Windows)
 
+cd /d "%~dp0"
+
 REM This script will keep running and restart on errorscd /d "%~dp0"
 
+title WhatsApp Automation Bot
 
 
-cd /d "%~dp0"echo.
 
-echo ============================================
+REM Check if setup was done
 
-echo.echo        WhatsApp Automation Bot
+if not exist "venv" (cd /d "%~dp0"echo.
 
-echo ============================================echo ============================================
+    echo Setup not complete! Running setup first...
+
+    call setup.batecho ============================================
+
+    exit /b
+
+)echo.echo        WhatsApp Automation Bot
+
+
+
+REM Activate virtual environmentecho ============================================echo ============================================
+
+call venv\Scripts\activate.bat
 
 echo        WhatsApp Automation Botecho.
 
-echo ============================================
+REM Default values
+
+set HOST=0.0.0.0echo ============================================
+
+set PORT=5001
 
 echo.REM Create required folder structure
 
-echo Checking folder structure...
+REM Load .env if exists
 
-REM Create required folder structureif not exist "data" mkdir data
+if exist .env (echo Checking folder structure...
 
-echo Checking folder structure...if not exist "uploads" mkdir uploads
+    for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
 
-if not exist "data" mkdir dataif not exist "uploads\images" mkdir uploads\images
+        set "%%a=%%b"REM Create required folder structureif not exist "data" mkdir data
 
-if not exist "uploads" mkdir uploadsif not exist "attachments" mkdir attachments
+    )
 
-if not exist "uploads\images" mkdir uploads\imagesif not exist "invitations" mkdir invitations
+)echo Checking folder structure...if not exist "uploads" mkdir uploads
 
-if not exist "attachments" mkdir attachmentsif not exist "whatsapp_profile" mkdir whatsapp_profile
 
-if not exist "invitations" mkdir invitationsif not exist "static\images" mkdir static\images
+
+echo.if not exist "data" mkdir dataif not exist "uploads\images" mkdir uploads\images
+
+echo ============================================
+
+echo   WhatsApp Automation Bot - RUNNINGif not exist "uploads" mkdir uploadsif not exist "attachments" mkdir attachments
+
+echo ============================================
+
+echo.if not exist "uploads\images" mkdir uploads\imagesif not exist "invitations" mkdir invitations
+
+echo   URL: http://localhost:%PORT%
+
+echo.if not exist "attachments" mkdir attachmentsif not exist "whatsapp_profile" mkdir whatsapp_profile
+
+echo   Press Ctrl+C to stop
+
+echo ============================================if not exist "invitations" mkdir invitationsif not exist "static\images" mkdir static\images
+
+echo.
 
 if not exist "whatsapp_profile" mkdir whatsapp_profileecho Folders ready!
 
-if not exist "static\images" mkdir static\imagesecho.
+:LOOP
 
-if not exist "logs" mkdir logs
+python app.pyif not exist "static\images" mkdir static\imagesecho.
 
-echo Folders ready!REM Check if virtual environment exists
 
-echo.if not exist "venv" (
+
+echo.if not exist "logs" mkdir logs
+
+echo [%date% %time%] Server stopped. Restarting in 5 seconds...
+
+echo Press Ctrl+C to exit completely.echo Folders ready!REM Check if virtual environment exists
+
+timeout /t 5 /nobreak >nul
+
+goto LOOPecho.if not exist "venv" (
+
 
     echo Virtual environment not found. Running setup...
 
