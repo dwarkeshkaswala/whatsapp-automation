@@ -1,101 +1,200 @@
-@echo off@echo off@echo off
+@echo off@echo off@echo off@echo off
 
-chcp 65001 >nul 2>&1
+setlocal EnableDelayedExpansion
 
-REM WhatsApp Automation - Run Script (Windows)chcp 65001 >nul 2>&1REM WhatsApp Automation - Start Script (Windows)
-
-REM Keeps running in background with auto-restart
-
-REM WhatsApp Automation - Start Script (Windows)
-
-cd /d "%~dp0"
-
-REM This script will keep running and restart on errorscd /d "%~dp0"
-
-title WhatsApp Automation Bot
+chcp 65001 >nul 2>&1chcp 65001 >nul 2>&1
 
 
 
-REM Check if setup was done
-
-if not exist "venv" (cd /d "%~dp0"echo.
-
-    echo Setup not complete! Running setup first...
-
-    call setup.batecho ============================================
-
-    exit /b
-
-)echo.echo        WhatsApp Automation Bot
+cd /d "%~dp0"REM WhatsApp Automation - Run Script (Windows)chcp 65001 >nul 2>&1REM WhatsApp Automation - Start Script (Windows)
 
 
 
-REM Activate virtual environmentecho ============================================echo ============================================
+title WhatsApp Automation BotREM Keeps running in background with auto-restart
 
-call venv\Scripts\activate.bat
 
-echo        WhatsApp Automation Botecho.
 
-REM Default values
+echo.REM WhatsApp Automation - Start Script (Windows)
 
-set HOST=0.0.0.0echo ============================================
+echo ============================================
+
+echo   WhatsApp Automation Botcd /d "%~dp0"
+
+echo ============================================
+
+echo.REM This script will keep running and restart on errorscd /d "%~dp0"
+
+
+
+REM Check if setup was donetitle WhatsApp Automation Bot
+
+if not exist "venv" (
+
+    echo ERROR: Setup not complete!
+
+    echo.
+
+    echo Please run setup.bat first.REM Check if setup was done
+
+    echo.
+
+    pauseif not exist "venv" (cd /d "%~dp0"echo.
+
+    exit /b 1
+
+)    echo Setup not complete! Running setup first...
+
+
+
+REM Check if activate script exists    call setup.batecho ============================================
+
+if not exist "venv\Scripts\activate.bat" (
+
+    echo ERROR: Virtual environment is corrupted!    exit /b
+
+    echo.
+
+    echo Please delete the venv folder and run setup.bat again.)echo.echo        WhatsApp Automation Bot
+
+    echo.
+
+    pause
+
+    exit /b 1
+
+)REM Activate virtual environmentecho ============================================echo ============================================
+
+
+
+REM Activate virtual environmentcall venv\Scripts\activate.bat
+
+echo Activating virtual environment...
+
+call venv\Scripts\activate.batecho        WhatsApp Automation Botecho.
+
+if !ERRORLEVEL! neq 0 (
+
+    echo ERROR: Failed to activate virtual environment!REM Default values
+
+    echo.
+
+    pauseset HOST=0.0.0.0echo ============================================
+
+    exit /b 1
+
+)set PORT=5001
+
+echo Virtual environment activated.
+
+echo.echo.REM Create required folder structure
+
+
+
+REM Check if app.py existsREM Load .env if exists
+
+if not exist "app.py" (
+
+    echo ERROR: app.py not found!if exist .env (echo Checking folder structure...
+
+    echo.
+
+    echo Make sure you have all project files.    for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
+
+    echo.
+
+    pause        set "%%a=%%b"REM Create required folder structureif not exist "data" mkdir data
+
+    exit /b 1
+
+)    )
+
+
+
+REM Default values)echo Checking folder structure...if not exist "uploads" mkdir uploads
+
+set HOST=0.0.0.0
 
 set PORT=5001
 
-echo.REM Create required folder structure
-
-REM Load .env if exists
-
-if exist .env (echo Checking folder structure...
-
-    for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
-
-        set "%%a=%%b"REM Create required folder structureif not exist "data" mkdir data
-
-    )
-
-)echo Checking folder structure...if not exist "uploads" mkdir uploads
 
 
+REM Load .env if existsecho.if not exist "data" mkdir dataif not exist "uploads\images" mkdir uploads\images
 
-echo.if not exist "data" mkdir dataif not exist "uploads\images" mkdir uploads\images
+if exist .env (
+
+    for /f "usebackq tokens=1,* delims==" %%a in (".env") do (echo ============================================
+
+        set "%%a=%%b"
+
+    )echo   WhatsApp Automation Bot - RUNNINGif not exist "uploads" mkdir uploadsif not exist "attachments" mkdir attachments
+
+)
 
 echo ============================================
 
-echo   WhatsApp Automation Bot - RUNNINGif not exist "uploads" mkdir uploadsif not exist "attachments" mkdir attachments
-
 echo ============================================
 
-echo.if not exist "uploads\images" mkdir uploads\imagesif not exist "invitations" mkdir invitations
+echo   Server starting...echo.if not exist "uploads\images" mkdir uploads\imagesif not exist "invitations" mkdir invitations
 
-echo   URL: http://localhost:%PORT%
+echo   URL: http://localhost:!PORT!
 
-echo.if not exist "attachments" mkdir attachmentsif not exist "whatsapp_profile" mkdir whatsapp_profile
-
-echo   Press Ctrl+C to stop
-
-echo ============================================if not exist "invitations" mkdir invitationsif not exist "static\images" mkdir static\images
+echo ============================================echo   URL: http://localhost:%PORT%
 
 echo.
 
-if not exist "whatsapp_profile" mkdir whatsapp_profileecho Folders ready!
+echo Press Ctrl+C to stop the server.echo.if not exist "attachments" mkdir attachmentsif not exist "whatsapp_profile" mkdir whatsapp_profile
+
+echo.
+
+echo   Press Ctrl+C to stop
 
 :LOOP
 
-python app.pyif not exist "static\images" mkdir static\imagesecho.
+echo [%date% %time%] Starting server...echo ============================================if not exist "invitations" mkdir invitationsif not exist "static\images" mkdir static\images
+
+echo.
+
+echo.
+
+python app.py
+
+if not exist "whatsapp_profile" mkdir whatsapp_profileecho Folders ready!
+
+set EXIT_CODE=!ERRORLEVEL!
+
+echo.:LOOP
+
+echo ============================================
+
+echo   Server stopped! Exit code: !EXIT_CODE!python app.pyif not exist "static\images" mkdir static\imagesecho.
+
+echo ============================================
+
+echo.
 
 
 
-echo.if not exist "logs" mkdir logs
+if !EXIT_CODE! neq 0 (echo.if not exist "logs" mkdir logs
 
-echo [%date% %time%] Server stopped. Restarting in 5 seconds...
+    echo There was an error running the server.
 
-echo Press Ctrl+C to exit completely.echo Folders ready!REM Check if virtual environment exists
+    echo Check the error message above.echo [%date% %time%] Server stopped. Restarting in 5 seconds...
 
-timeout /t 5 /nobreak >nul
+    echo.
 
-goto LOOPecho.if not exist "venv" (
+)echo Press Ctrl+C to exit completely.echo Folders ready!REM Check if virtual environment exists
 
+
+
+echo Restarting in 5 seconds...timeout /t 5 /nobreak >nul
+
+echo Press Ctrl+C to exit, or close this window.
+
+echo.goto LOOPecho.if not exist "venv" (
+
+timeout /t 5
+
+goto LOOP
 
     echo Virtual environment not found. Running setup...
 

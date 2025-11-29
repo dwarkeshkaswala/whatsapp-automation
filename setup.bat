@@ -1,7 +1,6 @@
 @echo off
+setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
-REM WhatsApp Automation - Setup Script (Windows)
-REM Run this ONCE to install everything
 
 cd /d "%~dp0"
 
@@ -26,29 +25,39 @@ echo.
 
 REM Check if Python is installed
 echo [2/5] Checking Python installation...
-where python >nul 2>&1
-if %ERRORLEVEL% neq 0 (
+python --version >nul 2>&1
+if !ERRORLEVEL! neq 0 (
     echo.
-    echo ERROR: Python is not installed!
+    echo ============================================
+    echo   ERROR: Python is NOT installed!
+    echo ============================================
     echo.
-    echo Please install Python from:
-    echo https://www.python.org/downloads/
+    echo   Please install Python from:
+    echo   https://www.python.org/downloads/
     echo.
-    echo IMPORTANT: Check "Add Python to PATH" during installation!
+    echo   IMPORTANT: Check "Add Python to PATH"
+    echo   during installation!
+    echo.
+    echo ============================================
     echo.
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('python --version') do set PYTHON_VERSION=%%i
-echo       Found: %PYTHON_VERSION%
+for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+echo       Found: !PYTHON_VERSION!
 echo.
 
 REM Create virtual environment
 echo [3/5] Creating virtual environment...
 if not exist "venv" (
+    echo       Creating venv... (this may take a minute)
     python -m venv venv
-    if %ERRORLEVEL% neq 0 (
-        echo ERROR: Failed to create virtual environment!
+    if !ERRORLEVEL! neq 0 (
+        echo.
+        echo ============================================
+        echo   ERROR: Failed to create virtual environment!
+        echo ============================================
+        echo.
         pause
         exit /b 1
     )
@@ -60,14 +69,31 @@ echo.
 
 REM Activate and install dependencies
 echo [4/5] Installing dependencies...
+echo       This may take a few minutes...
+echo.
 call venv\Scripts\activate.bat
-pip install --upgrade pip >nul 2>&1
-pip install -r requirements.txt
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to install dependencies!
+if !ERRORLEVEL! neq 0 (
+    echo.
+    echo ============================================
+    echo   ERROR: Failed to activate virtual environment!
+    echo ============================================
+    echo.
     pause
     exit /b 1
 )
+
+pip install --upgrade pip >nul 2>&1
+pip install -r requirements.txt
+if !ERRORLEVEL! neq 0 (
+    echo.
+    echo ============================================
+    echo   ERROR: Failed to install dependencies!
+    echo ============================================
+    echo.
+    pause
+    exit /b 1
+)
+echo.
 echo       Dependencies installed!
 echo.
 
@@ -77,17 +103,16 @@ set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 set "VBS_NAME=WhatsApp Bot.vbs"
 set "CURRENT_DIR=%~dp0"
 
-REM Create VBScript to run completely hidden (no window)
 (
 echo Set WshShell = CreateObject^("WScript.Shell"^)
 echo WshShell.CurrentDirectory = "%CURRENT_DIR%"
 echo WshShell.Run """%CURRENT_DIR%run.bat""", 0, False
 ) > "%STARTUP_FOLDER%\%VBS_NAME%"
 
-if %ERRORLEVEL% equ 0 (
-    echo       Added to Windows Startup (hidden)!
+if !ERRORLEVEL! equ 0 (
+    echo       Added to Windows Startup!
 ) else (
-    echo       Warning: Could not add to startup. Run as Administrator.
+    echo       Warning: Could not add to startup.
 )
 echo.
 
@@ -95,20 +120,22 @@ echo ============================================
 echo   SETUP COMPLETE!
 echo ============================================
 echo.
-echo   To START the bot: Double-click run.bat
-echo   To STOP the bot:  Use Task Manager (end python.exe)
+echo   To START: Double-click run.bat
+echo   To STOP:  Close the terminal or use Task Manager
 echo.
-echo   The bot will auto-start HIDDEN when Windows boots.
+echo   Bot will auto-start hidden on Windows boot.
 echo   To disable: Run remove-from-startup.bat
 echo.
 echo ============================================
 echo.
 
 set /p START_NOW="Start the bot now? (Y/N): "
-if /i "%START_NOW%"=="Y" (
+if /i "!START_NOW!"=="Y" (
     echo.
     echo Starting WhatsApp Bot...
     start "" "%~dp0run.bat"
 )
 
-pause
+echo.
+echo Press any key to close this window...
+pause >nul
