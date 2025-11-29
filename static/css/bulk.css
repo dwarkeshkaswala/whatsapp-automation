@@ -558,14 +558,28 @@ tr:hover {
 }
 
 .country-code-col {
-    width: 100px;
+    width: 120px;
     text-align: center;
     font-weight: 500;
     color: #666;
 }
 
+.country-flag {
+    font-size: 1.1em;
+    margin-right: 2px;
+}
+
+/* Highlight non-Indian contacts */
+.non-indian-contact {
+    background-color: #fff8e1 !important;
+}
+
+.non-indian-contact:hover {
+    background-color: #ffecb3 !important;
+}
+
 .actions-col {
-    width: 100px;
+    width: 140px;
     white-space: nowrap;
 }
 
@@ -575,6 +589,22 @@ tr:hover {
 
 .actions-col .btn:last-child {
     margin-right: 0;
+}
+
+/* Send single button */
+.send-single-btn {
+    background: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.send-single-btn:hover:not(:disabled) {
+    background: #218838 !important;
+    border-color: #1e7e34 !important;
+}
+
+.send-single-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 .empty-state {
