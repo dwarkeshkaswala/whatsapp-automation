@@ -448,6 +448,27 @@ async function restartBot() {
         return;
     }
     
+    // Stop any existing QR check intervals
+    if (qrCheckInterval) {
+        clearInterval(qrCheckInterval);
+        qrCheckInterval = null;
+    }
+    
+    // Reset UI to loading state
+    const loginCard = document.getElementById('loginStatusCard');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusMessage = document.getElementById('statusMessage');
+    const statusActions = document.getElementById('statusActions');
+    const qrContainer = document.getElementById('qrCodeContainer');
+    
+    loginCard.classList.remove('status-success', 'status-warning', 'status-error');
+    statusIcon.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    statusTitle.textContent = 'Restarting Bot...';
+    statusMessage.textContent = 'Please wait while the bot restarts';
+    statusActions.innerHTML = '';
+    qrContainer.style.display = 'none';
+    
     showAlert('Restarting bot...', 'info');
     
     try {
@@ -467,12 +488,32 @@ async function restartBot() {
         
         if (data.success) {
             showAlert(`Bot restarted! Headless: ${data.headless ? 'ON' : 'OFF'}`, 'success');
-            setTimeout(() => checkLoginStatus(), 3000);
+            // Wait for bot to fully initialize then check status
+            setTimeout(() => {
+                checkLoginStatus();
+                // Start polling for login status
+                qrCheckInterval = setInterval(async () => {
+                    const loginResponse = await fetch('/api/check-login');
+                    const loginData = await loginResponse.json();
+                    
+                    if (loginData.logged_in) {
+                        clearInterval(qrCheckInterval);
+                        qrCheckInterval = null;
+                        checkLoginStatus();
+                        showAlert('Successfully connected to WhatsApp!', 'success');
+                    } else if (loginData.status === 'waiting_for_scan') {
+                        // Refresh QR code periodically
+                        await fetchAndDisplayQR();
+                    }
+                }, 5000);
+            }, 3000);
         } else {
             showAlert('Failed to restart bot: ' + (data.error || 'Unknown error'), 'error');
+            checkLoginStatus(); // Reset UI to show initialize button
         }
     } catch (error) {
         showAlert('Error restarting bot: ' + error.message, 'error');
+        checkLoginStatus(); // Reset UI to show initialize button
     }
 }
 </script>
