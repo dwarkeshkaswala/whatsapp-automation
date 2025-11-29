@@ -247,22 +247,6 @@ def check_login():
         })
 
 
-@app.route('/api/close-bot', methods=['POST'])
-def close_bot():
-    """Close the WhatsApp bot"""
-    global whatsapp_bot
-    
-    try:
-        if whatsapp_bot is not None:
-            whatsapp_bot.close()
-            whatsapp_bot = None
-        
-        return jsonify({'success': True, 'message': 'Bot closed successfully'})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @app.route('/send')
 def send_page():
     """Send message page"""

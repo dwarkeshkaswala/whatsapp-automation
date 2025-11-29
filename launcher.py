@@ -375,18 +375,33 @@ def run_server():
         # Run the Flask app
         process = subprocess.Popen(
             [str(venv_python), str(app_file)],
-            cwd=str(BASE_DIR)
+            cwd=str(BASE_DIR),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
         )
         
-        # Wait a bit then open browser
-        time.sleep(3)
-        try:
-            webbrowser.open('http://localhost:5001')
-        except:
-            pass
+        # Track if server started successfully
+        server_started = False
+        browser_opened = False
         
-        # Wait for process to finish
-        process.wait()
+        # Read output and check for successful start
+        while True:
+            line = process.stdout.readline()
+            if not line and process.poll() is not None:
+                break
+            if line:
+                print(line.rstrip())
+                # Check if Flask server started successfully
+                if 'Running on' in line or '* Serving Flask app' in line:
+                    server_started = True
+                    if not browser_opened:
+                        try:
+                            webbrowser.open('http://localhost:5001')
+                            browser_opened = True
+                        except:
+                            pass
         
         return process.returncode
     except KeyboardInterrupt:
