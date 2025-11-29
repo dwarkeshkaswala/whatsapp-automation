@@ -145,6 +145,25 @@ def initialize_bot():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/close-bot', methods=['POST'])
+def close_bot():
+    """Close the WhatsApp bot"""
+    global whatsapp_bot
+    
+    try:
+        if whatsapp_bot is not None:
+            whatsapp_bot.close()
+            whatsapp_bot = None
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Bot closed successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/get-qr-code', methods=['GET'])
 def get_qr_code():
     """Get QR code for WhatsApp login"""

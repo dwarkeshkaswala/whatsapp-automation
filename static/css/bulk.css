@@ -339,8 +339,7 @@
 }
 
 /* CSV Upload Area */
-.csv-upload-area input[type="file"],
-.attachment-upload-area input[type="file"] {
+.csv-upload-area input[type="file"] {
     display: block;
     width: 100%;
     padding: 15px;
@@ -351,10 +350,85 @@
     margin-top: 10px;
 }
 
-.csv-upload-area input[type="file"]:hover,
-.attachment-upload-area input[type="file"]:hover {
+.csv-upload-area input[type="file"]:hover {
     border-color: #25D366;
     background: #f0fff0;
+}
+
+/* Attachment Upload Area - New Styling */
+.attachment-upload-area {
+    position: relative;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    background: #f9f9f9;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.attachment-upload-area:hover {
+    border-color: #25D366;
+    background: #f0fff0;
+}
+
+.attachment-upload-area input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.attachment-upload-area .upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px;
+    cursor: pointer;
+}
+
+.attachment-upload-area .upload-label i {
+    font-size: 48px;
+    color: #25D366;
+    margin-bottom: 10px;
+}
+
+.attachment-upload-area .upload-label span {
+    color: #666;
+    font-size: 14px;
+}
+
+/* Attachment Preview */
+.attachment-preview {
+    margin-top: 15px;
+}
+
+.attachment-preview .preview-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 15px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.preview-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    color: white;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.preview-image {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .upload-row {

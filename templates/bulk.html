@@ -96,30 +96,16 @@
             </div>
             
             <div class="form-group attachment-options" id="attachmentOptions" style="display: none;">
-                <label>Attachment Type</label>
                 <div class="attachment-section">
-                    <div class="attachment-type-selector">
-                        <label class="type-option">
-                            <input type="radio" name="attachmentType" value="image" checked>
-                            <span><i class="fas fa-image"></i> Image</span>
-                        </label>
-                        <label class="type-option">
-                            <input type="radio" name="attachmentType" value="video">
-                            <span><i class="fas fa-video"></i> Video</span>
-                        </label>
-                        <label class="type-option">
-                            <input type="radio" name="attachmentType" value="audio">
-                            <span><i class="fas fa-music"></i> Audio</span>
-                        </label>
-                        <label class="type-option">
-                            <input type="radio" name="attachmentType" value="document">
-                            <span><i class="fas fa-file"></i> Document</span>
-                        </label>
-                    </div>
                     <div class="attachment-upload-area">
-                        <input type="file" id="attachmentFile" accept="image/*">
+                        <label for="attachmentFile" class="upload-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Click to upload or drag file here</span>
+                        </label>
+                        <input type="file" id="attachmentFile" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip">
                     </div>
                     <div id="attachmentPreview" class="attachment-preview"></div>
+                    <input type="hidden" id="detectedFileType" value="">
                 </div>
             </div>
             

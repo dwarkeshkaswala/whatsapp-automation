@@ -88,44 +88,17 @@
     <div class="quick-actions">
         <h2>Quick Actions</h2>
         <div class="action-buttons">
-            <a href="/send" class="action-btn">
+            <a href="/bulk" class="action-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                 <i class="fas fa-paper-plane"></i>
-                <span>Send Message</span>
-            </a>
-            <a href="/schedule" class="action-btn">
-                <i class="fas fa-calendar-plus"></i>
-                <span>Schedule Message</span>
+                <span>Bulk Send</span>
             </a>
             <a href="/contacts" class="action-btn">
                 <i class="fas fa-user-plus"></i>
-                <span>Add Contact</span>
-            </a>
-            <a href="/automated" class="action-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <i class="fas fa-robot"></i>
-                <span>Automated Bulk Send</span>
+                <span>Contacts</span>
             </a>
             <a href="/history" class="action-btn">
                 <i class="fas fa-list"></i>
-                <span>View History</span>
-            </a>
-        </div>
-    </div>
-
-
-    <div class="info-section">
-        <h2>🚀 New Feature: Automated Bulk Attachment Sending!</h2>
-        <div class="info-card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid #667eea;">
-            <h3>Send Files to Multiple Contacts - Fully Automated! 🤖</h3>
-            <p><strong>No manual work required!</strong> Just match filenames to contact names and let the system do everything.</p>
-            <ol>
-                <li>Import contacts from CSV (Contacts page)</li>
-                <li>Place files in <code>attachments/</code> folder with names matching your contacts</li>
-                <li>Go to <strong>Automated Bulk</strong> page and click "Scan"</li>
-                <li>Review matches and click "Start Automated Send"</li>
-            </ol>
-            <p><strong>Example:</strong> File "John Doe.pdf" → automatically sent to contact "John Doe"</p>
-            <a href="/automated" class="btn btn-primary" style="margin-top: 10px;">
-                <i class="fas fa-robot"></i> Try Automated Bulk Send
+                <span>History</span>
             </a>
         </div>
     </div>
@@ -136,10 +109,9 @@
             <ol>
                 <li>Click "Initialize Bot" to start the WhatsApp Web session</li>
                 <li>Scan the QR code with your WhatsApp mobile app</li>
-                <li>Once logged in, you can send messages individually or in bulk</li>
-                <li>Add contacts to your address book for easy access</li>
-                <li>Schedule messages to be sent at a specific time</li>
-                <li><strong>NEW:</strong> Use Automated Bulk to send files automatically by matching filenames!</li>
+                <li>Once logged in, go to <strong>Bulk Send</strong> to send messages</li>
+                <li>Add phone numbers or import from CSV</li>
+                <li>Attach files (auto-detects type) and send to all contacts</li>
             </ol>
         </div>
     </div>
@@ -154,7 +126,7 @@
                         <span class="setting-name">
                             <i class="fas fa-eye-slash"></i> Headless Mode
                         </span>
-                        <span class="setting-desc">Run browser in background (no visible window)</span>
+                        <span class="setting-desc">Run browser in background (no visible window) <strong style="color: #e74c3c;">⚠️ Requires bot restart</strong></span>
                     </label>
                     <label class="switch">
                         <input type="checkbox" id="headlessMode" onchange="updateSettings()">
@@ -174,6 +146,14 @@
                     </div>
                 </div>
             </div>
+            <div class="settings-note" style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 6px; font-size: 13px;">
+                <i class="fas fa-info-circle" style="color: #856404;"></i>
+                <strong>Note:</strong> Headless mode changes take effect after restarting the bot. 
+                Turn OFF headless to see the browser window (useful for QR scan).
+            </div>
+            <button onclick="restartBot()" class="btn btn-warning" style="margin-top: 15px; width: 100%;">
+                <i class="fas fa-sync"></i> Restart Bot (Apply Settings)
+            </button>
         </div>
     </div>
 </div>
@@ -459,6 +439,40 @@ async function updateSettings() {
         }
     } catch (error) {
         showAlert('Error saving settings: ' + error.message, 'error');
+    }
+}
+
+// Restart bot to apply settings
+async function restartBot() {
+    if (!confirm('This will close the current browser and start a new one. Continue?')) {
+        return;
+    }
+    
+    showAlert('Restarting bot...', 'info');
+    
+    try {
+        // First close the existing bot
+        await fetch('/api/close-bot', { method: 'POST' });
+        
+        // Wait a moment
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Initialize new bot
+        const response = await fetch('/api/initialize-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(`Bot restarted! Headless: ${data.headless ? 'ON' : 'OFF'}`, 'success');
+            setTimeout(() => checkLoginStatus(), 3000);
+        } else {
+            showAlert('Failed to restart bot: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        showAlert('Error restarting bot: ' + error.message, 'error');
     }
 }
 </script>

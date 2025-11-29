@@ -61,10 +61,6 @@ function initEventListeners() {
     // Attachment checkbox toggle
     document.getElementById('hasAttachment').addEventListener('change', toggleAttachmentOptions);
     
-    document.querySelectorAll('input[name="attachmentType"]').forEach(radio => {
-        radio.addEventListener('change', updateAttachmentAccept);
-    });
-    
     document.getElementById('attachmentFile').addEventListener('change', handleAttachmentUpload);
     document.getElementById('startSendBtn').addEventListener('click', startBulkSend);
     document.getElementById('pauseSendBtn').addEventListener('click', pauseSend);
@@ -349,18 +345,53 @@ function clearAllContacts() {
 }
 
 function updateAttachmentAccept() {
-    const type = document.querySelector('input[name="attachmentType"]:checked').value;
-    const fileInput = document.getElementById('attachmentFile');
+    // No longer needed - accept all types
+}
+
+// Auto-detect file type from MIME type or extension
+function detectFileType(file) {
+    const mimeType = file.type.toLowerCase();
+    const fileName = file.name.toLowerCase();
+    const ext = fileName.split('.').pop();
     
-    const acceptMap = {
-        'image': 'image/*',
-        'video': 'video/*',
-        'audio': 'audio/*',
-        'document': '.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.ppt,.pptx'
+    // Check MIME type first
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    
+    // Check extension for documents
+    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+    const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'webm', '3gp'];
+    const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
+    
+    if (imageExts.includes(ext)) return 'image';
+    if (videoExts.includes(ext)) return 'video';
+    if (audioExts.includes(ext)) return 'audio';
+    
+    // Everything else is a document
+    return 'document';
+}
+
+// Get icon for file type
+function getFileTypeIcon(type) {
+    const icons = {
+        'image': 'fa-image',
+        'video': 'fa-video',
+        'audio': 'fa-music',
+        'document': 'fa-file-alt'
     };
-    
-    fileInput.accept = acceptMap[type] || '*/*';
-    clearAttachment();
+    return icons[type] || 'fa-file';
+}
+
+// Get color for file type
+function getFileTypeColor(type) {
+    const colors = {
+        'image': '#4CAF50',
+        'video': '#2196F3',
+        'audio': '#9C27B0',
+        'document': '#FF9800'
+    };
+    return colors[type] || '#666';
 }
 
 function handleAttachmentUpload(event) {
@@ -369,30 +400,44 @@ function handleAttachmentUpload(event) {
     
     uploadedAttachment = file;
     
-    const preview = document.getElementById('attachmentPreview');
-    const type = document.querySelector('input[name="attachmentType"]:checked').value;
+    // Auto-detect file type
+    const detectedType = detectFileType(file);
+    document.getElementById('detectedFileType').value = detectedType;
     
-    let html = '<div class="preview-item">';
-    html += '<span class="preview-name">' + escapeHtml(file.name) + '</span>';
-    html += '<span class="preview-size">(' + formatFileSize(file.size) + ')</span>';
-    html += '<button class="btn btn-sm btn-danger" onclick="clearAttachment()"><i class="fas fa-times"></i></button>';
+    const preview = document.getElementById('attachmentPreview');
+    const icon = getFileTypeIcon(detectedType);
+    const color = getFileTypeColor(detectedType);
+    
+    let html = '<div class="preview-item" style="border-left: 4px solid ' + color + ';">';
+    html += '<div class="preview-type-badge" style="background: ' + color + ';">';
+    html += '<i class="fas ' + icon + '"></i> ' + detectedType.toUpperCase();
     html += '</div>';
     
-    if (type === 'image' && file.type.startsWith('image/')) {
+    // Show image preview for images
+    if (detectedType === 'image' && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            let imgHtml = '<div class="preview-item">';
-            imgHtml += '<img src="' + e.target.result + '" class="preview-image" alt="Preview">';
+            let imgHtml = '<div class="preview-item" style="border-left: 4px solid ' + color + ';">';
+            imgHtml += '<div class="preview-type-badge" style="background: ' + color + ';">';
+            imgHtml += '<i class="fas ' + icon + '"></i> ' + detectedType.toUpperCase();
+            imgHtml += '</div>';
+            imgHtml += '<img src="' + e.target.result + '" class="preview-image" alt="Preview" style="max-width: 200px; max-height: 150px; margin: 10px 0;">';
             imgHtml += '<div class="preview-info">';
             imgHtml += '<span class="preview-name">' + escapeHtml(file.name) + '</span>';
             imgHtml += '<span class="preview-size">(' + formatFileSize(file.size) + ')</span>';
             imgHtml += '</div>';
-            imgHtml += '<button class="btn btn-sm btn-danger" onclick="clearAttachment()"><i class="fas fa-times"></i></button>';
+            imgHtml += '<button class="btn btn-sm btn-danger" onclick="clearAttachment()"><i class="fas fa-times"></i> Remove</button>';
             imgHtml += '</div>';
             preview.innerHTML = imgHtml;
         };
         reader.readAsDataURL(file);
     } else {
+        html += '<div class="preview-info" style="margin: 10px 0;">';
+        html += '<span class="preview-name"><strong>' + escapeHtml(file.name) + '</strong></span><br>';
+        html += '<span class="preview-size" style="color: #666;">' + formatFileSize(file.size) + '</span>';
+        html += '</div>';
+        html += '<button class="btn btn-sm btn-danger" onclick="clearAttachment()"><i class="fas fa-times"></i> Remove</button>';
+        html += '</div>';
         preview.innerHTML = html;
     }
 }
@@ -401,6 +446,7 @@ function clearAttachment() {
     uploadedAttachment = null;
     document.getElementById('attachmentFile').value = '';
     document.getElementById('attachmentPreview').innerHTML = '';
+    document.getElementById('detectedFileType').value = '';
 }
 
 async function startBulkSend() {
@@ -414,7 +460,8 @@ async function startBulkSend() {
     
     const message = document.getElementById('messageTemplate').value.trim();
     const hasAttachment = document.getElementById('hasAttachment').checked;
-    const attachmentType = hasAttachment ? document.querySelector('input[name="attachmentType"]:checked').value : null;
+    // Get auto-detected file type instead of radio button
+    const attachmentType = hasAttachment ? document.getElementById('detectedFileType').value : null;
     
     // Validation: need either message or attachment
     if (!message && (!hasAttachment || !uploadedAttachment)) {

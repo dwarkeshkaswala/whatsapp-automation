@@ -60,15 +60,61 @@ def check_for_updates():
     """Check and pull latest updates from GitHub"""
     git_dir = BASE_DIR / '.git'
     
-    if not git_dir.exists():
-        print_info("Not a git repository, skipping update check")
-        return True
-    
     # Check if git is available
     git_path = shutil.which('git')
     if not git_path:
         print_info("Git not installed, skipping update check")
+        print_info("Install Git from https://git-scm.com/ for auto-updates")
         return True
+    
+    # If not a git repo, initialize it and add remote
+    if not git_dir.exists():
+        print_info("Not a git repository, initializing for updates...")
+        try:
+            # Initialize git repo
+            subprocess.run(
+                [git_path, 'init'],
+                cwd=str(BASE_DIR),
+                capture_output=True,
+                timeout=30
+            )
+            
+            # Add remote origin
+            subprocess.run(
+                [git_path, 'remote', 'add', 'origin', 'https://github.com/dwarkeshkaswala/whatsapp-automation.git'],
+                cwd=str(BASE_DIR),
+                capture_output=True,
+                timeout=30
+            )
+            
+            # Fetch from remote
+            print_info("Fetching from GitHub...")
+            fetch_result = subprocess.run(
+                [git_path, 'fetch', 'origin', 'main'],
+                cwd=str(BASE_DIR),
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            
+            if fetch_result.returncode == 0:
+                # Reset to match remote
+                print_info("Syncing with latest version...")
+                subprocess.run(
+                    [git_path, 'reset', '--hard', 'origin/main'],
+                    cwd=str(BASE_DIR),
+                    capture_output=True,
+                    timeout=60
+                )
+                print_success("Repository initialized and updated!")
+                return 'reinstall'
+            else:
+                print_error(f"Fetch failed: {fetch_result.stderr}")
+                return True
+                
+        except Exception as e:
+            print_info(f"Git initialization failed: {e}")
+            return True
     
     print_info("Checking for updates from GitHub...")
     
