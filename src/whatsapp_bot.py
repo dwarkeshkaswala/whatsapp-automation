@@ -45,17 +45,67 @@ class WhatsAppBot:
         }
     }
     
+    # XPath profiles for different OS/Browser combinations
+    # Each profile has selectors that work for that specific environment
+    XPATH_PROFILES = {
+        # macOS Brave Browser (original/default)
+        'darwin_brave': {
+            'attachment_button': [
+                '//footer//button[contains(@aria-label, "Attach")]',
+                '//span[@data-icon="plus"]/..',
+                '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[1]/div/span/button'
+            ],
+            'document_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div/input',
+            'photo_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[2]/li/div/input',
+            'audio_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[4]/li/div/input',
+            'send_button': [
+                '//span[@data-icon="send"]/..',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/div/div'
+            ],
+        },
+        # Windows Chrome Browser
+        'windows_chrome': {
+            'attachment_button': [
+                '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[1]/div/span/button',
+                '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[1]/div/span/button/div/div/div[1]/span',
+                '//footer//button[contains(@aria-label, "Attach")]',
+                '//span[@data-icon="plus"]/..'
+            ],
+            'document_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div/input',
+            'photo_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[2]/li/div/input',
+            'audio_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[4]/li/div/input',
+            'send_button': [
+                '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[4]/div/span/button',
+                '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[4]/div/span/button/div/div/div[1]/span',
+                '//span[@data-icon="send"]/..'
+            ],
+        },
+        # Default fallback (tries all known selectors)
+        'default': {
+            'attachment_button': [
+                '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[1]/div/span/button',
+                '//footer//button[contains(@aria-label, "Attach")]',
+                '//span[@data-icon="plus"]/..',
+                '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[1]/div/span/button/div/div/div[1]/span'
+            ],
+            'document_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div/input',
+            'photo_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[2]/li/div/input',
+            'audio_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[4]/li/div/input',
+            'send_button': [
+                '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[4]/div/span/button',
+                '//span[@data-icon="send"]/..',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/div/div'
+            ],
+        },
+    }
+    
+    # Common selectors that work across all platforms
     SELECTORS = {
         'qr_canvas': '//canvas[contains(@aria-label, "Scan")]',
         'side_panel': '//div[@id="side"]',
         'message_input': ['//div[@contenteditable="true"][@data-tab="10"]', '//div[@title="Type a message"]', '//footer//div[@contenteditable="true"]'],
-        'attachment_button': ['//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[1]/div/span/button', '//footer//button[contains(@aria-label, "Attach")]', '//span[@data-icon="plus"]/..'],
-        'document_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div/input',
-        'photo_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[2]/li/div/input',
-        'audio_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[4]/li/div/input',
         'file_input': '//input[@type="file"]',
         'caption_input': ['//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div[1]/div[1]', '//div[@contenteditable="true"][@data-tab="10"]'],
-        'send_button': ['//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/div/div', '//span[@data-icon="send"]/..'],
         'invalid_number': ['//*[contains(text(), "Phone number shared via url is invalid")]', '//*[contains(text(), "invalid")]'],
     }
 
@@ -65,8 +115,43 @@ class WhatsAppBot:
         self.is_headless = False
         self.browser_type = None
         self.system = platform.system()
+        self.xpath_profile = None  # Will be set during initialize
         # base_dir is the project root (parent of src/)
         self.base_dir = Path(__file__).parent.parent.absolute()
+    
+    def _get_xpath_profile_key(self):
+        """Determine which XPath profile to use based on OS and browser"""
+        os_name = self.system.lower()
+        browser = (self.browser_type or 'chrome').lower()
+        
+        # Try specific OS + browser combination
+        profile_key = f"{os_name}_{browser}"
+        if profile_key in self.XPATH_PROFILES:
+            return profile_key
+        
+        # Try OS with chrome as default
+        profile_key = f"{os_name}_chrome"
+        if profile_key in self.XPATH_PROFILES:
+            return profile_key
+        
+        # Fallback to default
+        return 'default'
+    
+    def _get_selector(self, selector_name):
+        """Get selector(s) for a given name, using profile-specific or common selectors"""
+        # First check profile-specific selectors
+        if self.xpath_profile and selector_name in self.XPATH_PROFILES.get(self.xpath_profile, {}):
+            return self.XPATH_PROFILES[self.xpath_profile][selector_name]
+        
+        # Then check default profile
+        if selector_name in self.XPATH_PROFILES.get('default', {}):
+            return self.XPATH_PROFILES['default'][selector_name]
+        
+        # Finally check common selectors
+        if selector_name in self.SELECTORS:
+            return self.SELECTORS[selector_name]
+        
+        return None
         
     def _get_browser_path(self, browser_type):
         paths = self.BROWSER_PATHS.get(self.system, {}).get(browser_type, [])
@@ -125,7 +210,12 @@ class WhatsAppBot:
             if not browser_path:
                 raise Exception("No supported browser found. Install Chrome, Brave, Firefox, or Edge.")
             self.browser_type = browser_type
+            
+            # Set XPath profile based on OS and browser
+            self.xpath_profile = self._get_xpath_profile_key()
             print(f"Using browser: {browser_path}")
+            print(f"XPath profile: {self.xpath_profile}")
+            
             if browser_type == 'firefox':
                 options = self._create_firefox_options(browser_path, headless)
                 self.driver = webdriver.Firefox(options=options)
@@ -298,7 +388,7 @@ class WhatsAppBot:
             print(f"Sending attachment ({file_type}) to {phone}...")
             
             # Click attachment button to open menu
-            attach_btn = self._find_element(self.SELECTORS['attachment_button'])
+            attach_btn = self._find_element(self._get_selector('attachment_button'))
             if not attach_btn:
                 print("Could not find attachment button")
                 return False
@@ -307,13 +397,13 @@ class WhatsAppBot:
             
             # Select correct input based on file type
             if file_type in ['image', 'video']:
-                input_xpath = self.SELECTORS['photo_input']
+                input_xpath = self._get_selector('photo_input')
                 input_name = 'photo/video'
             elif file_type == 'audio':
-                input_xpath = self.SELECTORS['audio_input']
+                input_xpath = self._get_selector('audio_input')
                 input_name = 'audio'
             else:
-                input_xpath = self.SELECTORS['document_input']
+                input_xpath = self._get_selector('document_input')
                 input_name = 'document'
             
             # Find and use the file input directly
@@ -324,7 +414,7 @@ class WhatsAppBot:
             except Exception as e:
                 print(f"Could not find {input_name} input: {e}")
                 # Fallback to generic file input
-                inputs = self.driver.find_elements(By.XPATH, self.SELECTORS['file_input'])
+                inputs = self.driver.find_elements(By.XPATH, self._get_selector('file_input'))
                 if not inputs:
                     print("Could not find any file input")
                     return False
@@ -372,7 +462,7 @@ class WhatsAppBot:
                     print("Warning: Could not add caption, sending without caption")
             
             time.sleep(1)
-            send_btn = self._find_element(self.SELECTORS['send_button'], timeout=5)
+            send_btn = self._find_element(self._get_selector('send_button'), timeout=5)
             if not send_btn:
                 print("Could not find send button")
                 return False
