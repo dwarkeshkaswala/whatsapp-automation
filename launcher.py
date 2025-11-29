@@ -9,7 +9,7 @@ import os
 import sys
 import subprocess
 import time
-import threading
+import shutil
 import webbrowser
 from pathlib import Path
 
@@ -17,9 +17,11 @@ from pathlib import Path
 if getattr(sys, 'frozen', False):
     # Running as compiled exe
     BASE_DIR = Path(sys.executable).parent
+    IS_EXE = True
 else:
     # Running as script
     BASE_DIR = Path(__file__).parent
+    IS_EXE = False
 
 os.chdir(BASE_DIR)
 
@@ -54,38 +56,104 @@ def create_folders():
         folder_path.mkdir(parents=True, exist_ok=True)
     print_success("Folders created")
 
+def find_python():
+    """Find Python executable on the system"""
+    # If running as script, use current Python
+    if not IS_EXE:
+        return sys.executable
+    
+    # If running as EXE, search for Python
+    python_names = ['python', 'python3', 'py']
+    
+    for name in python_names:
+        python_path = shutil.which(name)
+        if python_path:
+            # Verify it's actually Python
+            try:
+                result = subprocess.run(
+                    [python_path, '--version'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if 'Python' in (result.stdout + result.stderr):
+                    return python_path
+            except:
+                continue
+    
+    # Check common Windows locations
+    common_paths = [
+        Path(os.environ.get('LOCALAPPDATA', '')) / 'Programs' / 'Python',
+        Path('C:/Python311'),
+        Path('C:/Python310'),
+        Path('C:/Python39'),
+        Path('C:/Program Files/Python311'),
+        Path('C:/Program Files/Python310'),
+    ]
+    
+    for base_path in common_paths:
+        if base_path.exists():
+            for python_exe in base_path.rglob('python.exe'):
+                return str(python_exe)
+    
+    return None
+
 def check_python():
     """Check if Python is available"""
+    python_path = find_python()
+    
+    if not python_path:
+        print_error("Python not found!")
+        print("Please install Python from https://www.python.org/downloads/")
+        print("Make sure to check 'Add Python to PATH' during installation.")
+        return None
+    
     try:
         result = subprocess.run(
-            [sys.executable, '--version'],
+            [python_path, '--version'],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=10
         )
         version = result.stdout.strip() or result.stderr.strip()
         print_success(f"Python found: {version}")
-        return True
+        print_info(f"Location: {python_path}")
+        return python_path
     except Exception as e:
-        print_error(f"Python not found: {e}")
-        return False
+        print_error(f"Python check failed: {e}")
+        return None
 
-def create_venv():
+def create_venv(python_path):
     """Create virtual environment if it doesn't exist"""
     venv_path = BASE_DIR / 'venv'
     
     if venv_path.exists():
-        print_success("Virtual environment exists")
-        return True
+        # Check if it's valid
+        venv_python = get_venv_python()
+        if venv_python.exists():
+            print_success("Virtual environment exists")
+            return True
+        else:
+            print_info("Invalid venv found, recreating...")
+            shutil.rmtree(venv_path, ignore_errors=True)
     
     print_info("Creating virtual environment...")
     try:
-        subprocess.run(
-            [sys.executable, '-m', 'venv', str(venv_path)],
-            check=True
+        result = subprocess.run(
+            [python_path, '-m', 'venv', str(venv_path)],
+            capture_output=True,
+            text=True,
+            timeout=120
         )
+        if result.returncode != 0:
+            print_error(f"venv creation failed: {result.stderr}")
+            return False
         print_success("Virtual environment created")
         return True
-    except subprocess.CalledProcessError as e:
+    except subprocess.TimeoutExpired:
+        print_error("venv creation timed out")
+        return False
+    except Exception as e:
         print_error(f"Failed to create venv: {e}")
         return False
 
@@ -101,6 +169,10 @@ def install_requirements():
     venv_python = get_venv_python()
     requirements_file = BASE_DIR / 'requirements.txt'
     
+    if not venv_python.exists():
+        print_error("Virtual environment Python not found!")
+        return False
+    
     if not requirements_file.exists():
         print_error("requirements.txt not found!")
         return False
@@ -108,28 +180,35 @@ def install_requirements():
     # Check if flask is installed (quick check)
     try:
         result = subprocess.run(
-            [str(venv_python), '-c', 'import flask'],
-            capture_output=True
+            [str(venv_python), '-c', 'import flask; print("ok")'],
+            capture_output=True,
+            text=True,
+            timeout=30
         )
-        if result.returncode == 0:
+        if result.returncode == 0 and 'ok' in result.stdout:
             print_success("Dependencies already installed")
             return True
     except:
         pass
     
     print_info("Installing dependencies (this may take a few minutes)...")
+    
     try:
         # Upgrade pip first
+        print_info("Upgrading pip...")
         subprocess.run(
             [str(venv_python), '-m', 'pip', 'install', '--upgrade', 'pip'],
-            capture_output=True
+            capture_output=True,
+            timeout=120
         )
         
         # Install requirements
+        print_info("Installing packages from requirements.txt...")
         result = subprocess.run(
             [str(venv_python), '-m', 'pip', 'install', '-r', str(requirements_file)],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=600  # 10 minutes timeout
         )
         
         if result.returncode != 0:
@@ -138,6 +217,9 @@ def install_requirements():
         
         print_success("Dependencies installed")
         return True
+    except subprocess.TimeoutExpired:
+        print_error("Installation timed out. Try running again.")
+        return False
     except Exception as e:
         print_error(f"Failed to install dependencies: {e}")
         return False
@@ -147,9 +229,13 @@ def run_server():
     venv_python = get_venv_python()
     app_file = BASE_DIR / 'app.py'
     
+    if not venv_python.exists():
+        print_error("Virtual environment Python not found!")
+        return 1
+    
     if not app_file.exists():
         print_error("app.py not found!")
-        return False
+        return 1
     
     print_info("Starting server on http://localhost:5001")
     print_info("Press Ctrl+C to stop\n")
@@ -164,7 +250,10 @@ def run_server():
         
         # Wait a bit then open browser
         time.sleep(3)
-        webbrowser.open('http://localhost:5001')
+        try:
+            webbrowser.open('http://localhost:5001')
+        except:
+            pass
         
         # Wait for process to finish
         process.wait()
@@ -188,12 +277,13 @@ def setup():
     
     # Step 2: Check Python
     print("\n[2/4] Checking Python...")
-    if not check_python():
+    python_path = check_python()
+    if not python_path:
         return False
     
     # Step 3: Create venv
     print("\n[3/4] Setting up virtual environment...")
-    if not create_venv():
+    if not create_venv(python_path):
         return False
     
     # Step 4: Install requirements
@@ -212,11 +302,12 @@ def main():
     print_header()
     
     # Check if this is first run (no venv)
-    venv_path = BASE_DIR / 'venv'
-    if not venv_path.exists():
+    venv_python = get_venv_python()
+    if not venv_python.exists():
         print("First time setup detected...\n")
         if not setup():
-            print("\nSetup failed! Press Enter to exit...")
+            print("\nSetup failed!")
+            print("\nPress Enter to exit...")
             input()
             return 1
     
@@ -256,6 +347,8 @@ if __name__ == '__main__':
         sys.exit(main())
     except Exception as e:
         print(f"\n\nFATAL ERROR: {e}")
+        import traceback
+        traceback.print_exc()
         print("\nPress Enter to exit...")
         input()
         sys.exit(1)
