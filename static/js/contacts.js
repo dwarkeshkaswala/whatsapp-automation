@@ -1,9 +1,40 @@
+// Global settings
+let appSettings = { default_country_code: '91' };
+
+// Load settings on page load
+async function loadAppSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        if (data.success) {
+            appSettings = data.settings;
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+// Prepend country code if phone doesn't have one
+function normalizePhone(phone) {
+    phone = phone.trim().replace(/[^0-9]/g, '');
+    // If phone is less than 10 digits or starts with 0, prepend country code
+    if (phone.length <= 10 || phone.startsWith('0')) {
+        phone = phone.replace(/^0+/, ''); // Remove leading zeros
+        phone = appSettings.default_country_code + phone;
+    }
+    return phone;
+}
+
+// Load settings on page load
+loadAppSettings();
+
 // Add contact form
 document.getElementById('addContactForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const name = document.getElementById('contactName').value;
-    const phone = document.getElementById('contactPhone').value;
+    let phone = document.getElementById('contactPhone').value;
+    phone = normalizePhone(phone);
     
     try {
         const response = await fetch('/api/contacts', {

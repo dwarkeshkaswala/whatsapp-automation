@@ -6,8 +6,23 @@ let contacts = [];
 let uploadedAttachment = null;
 let isSending = false;
 let isPaused = false;
+let appSettings = { default_country_code: '91' };
+
+// Load settings on page load
+async function loadAppSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        if (data.success) {
+            appSettings = data.settings;
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function() {
+    loadAppSettings();
     initTabSwitching();
     initEventListeners();
     loadSavedContacts();
@@ -103,6 +118,17 @@ function parsePhoneNumber(phone) {
     return { countryCode, localNumber };
 }
 
+// Normalize phone number - add country code if missing
+function normalizePhone(phone) {
+    phone = phone.replace(/[^\d]/g, ''); // Remove non-digits
+    // If phone is 10 digits or less or starts with 0, prepend country code
+    if (phone.length <= 10 || phone.startsWith('0')) {
+        phone = phone.replace(/^0+/, ''); // Remove leading zeros
+        phone = appSettings.default_country_code + phone;
+    }
+    return phone;
+}
+
 function addContactsFromTextarea() {
     const textarea = document.getElementById('phoneNumbers');
     const text = textarea.value.trim();
@@ -118,6 +144,7 @@ function addContactsFromTextarea() {
     lines.forEach(line => {
         let phone = line.trim().replace(/[^\d+]/g, '');
         phone = phone.replace(/^\+/, ''); // Remove leading +
+        phone = normalizePhone(phone); // Apply default country code
         
         if (phone && phone.length >= 10) {
             if (!contacts.find(c => c.phone === phone)) {
@@ -183,6 +210,9 @@ function handleCsvUpload(event) {
             } else if (parts.length === 1) {
                 phone = parts[0].replace(/[\s-+]/g, '');
             }
+            
+            // Normalize phone with default country code
+            phone = normalizePhone(phone);
             
             if (phone && phone.length >= 10) {
                 if (!contacts.find(c => c.phone === phone)) {

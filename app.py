@@ -31,8 +31,46 @@ ALLOWED_CSV_EXTENSIONS = {'csv'}
 # PDF Generator API
 PDF_GENERATOR_URL = os.getenv('PDF_GENERATOR_URL', 'http://localhost:5173/api/single/generate')
 
-# Bot Configuration
-BOT_HEADLESS = os.getenv('BOT_HEADLESS', 'false').lower() == 'true'  # Set to 'true' for headless mode
+# Bot Configuration - stored in settings file
+SETTINGS_FILE = os.path.join(DATA_FOLDER, 'settings.json')
+
+# Default settings
+DEFAULT_SETTINGS = {
+    'headless': True,  # Browser hidden by default
+    'default_country_code': '91'  # India
+}
+
+def load_settings():
+    """Load settings from file"""
+    try:
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r') as f:
+                import json
+                settings = json.load(f)
+                return {**DEFAULT_SETTINGS, **settings}
+    except:
+        pass
+    return DEFAULT_SETTINGS.copy()
+
+def save_settings(settings):
+    """Save settings to file"""
+    try:
+        with open(SETTINGS_FILE, 'w') as f:
+            import json
+            json.dump(settings, f)
+        return True
+    except:
+        return False
+
+def get_headless_mode():
+    """Get headless mode from settings"""
+    settings = load_settings()
+    return settings.get('headless', True)
+
+def get_default_country_code():
+    """Get default country code from settings"""
+    settings = load_settings()
+    return settings.get('default_country_code', '91')
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -93,13 +131,14 @@ def initialize_bot():
             except:
                 pass
         
+        headless = get_headless_mode()
         whatsapp_bot = WhatsAppBot()
-        whatsapp_bot.initialize(headless=BOT_HEADLESS)
+        whatsapp_bot.initialize(headless=headless)
         
         return jsonify({
             'success': True, 
             'message': 'Bot initialized successfully',
-            'headless': BOT_HEADLESS
+            'headless': headless
         })
         
     except Exception as e:
@@ -128,6 +167,34 @@ def get_qr_code():
             'error': qr_data.get('error')
         })
         
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/settings', methods=['GET'])
+def get_settings():
+    """Get current settings"""
+    settings = load_settings()
+    return jsonify({'success': True, 'settings': settings})
+
+
+@app.route('/api/settings', methods=['POST'])
+def update_settings():
+    """Update settings"""
+    try:
+        data = request.json
+        settings = load_settings()
+        
+        if 'headless' in data:
+            settings['headless'] = bool(data['headless'])
+        
+        if 'default_country_code' in data:
+            settings['default_country_code'] = str(data['default_country_code']).strip().replace('+', '')
+        
+        if save_settings(settings):
+            return jsonify({'success': True, 'message': 'Settings saved'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save settings'}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -289,11 +356,18 @@ def add_contact():
     """API endpoint to add a new contact"""
     try:
         data = request.json
-        name = data.get('name')
+        name = data.get('name', '')
         phone = data.get('phone')
         
-        if not name or not phone:
-            return jsonify({'success': False, 'error': 'Name and phone are required'}), 400
+        if not phone:
+            return jsonify({'success': False, 'error': 'Phone number is required'}), 400
+        
+        # Clean phone number
+        phone = phone.strip().replace(' ', '').replace('-', '').replace('+', '')
+        
+        # Use phone as name if name is empty
+        if not name:
+            name = phone
         
         db.add_contact(name, phone)
         return jsonify({'success': True, 'message': 'Contact added successfully'})
@@ -353,13 +427,25 @@ def import_contacts():
         
         for row in csv_reader:
             try:
-                # Support multiple column names
-                name = row.get('name') or row.get('Name') or row.get('NAME')
-                phone = row.get('phone') or row.get('Phone') or row.get('PHONE') or row.get('number') or row.get('Number')
+                # Support multiple column names - name is optional
+                name = row.get('name') or row.get('Name') or row.get('NAME') or ''
+                phone = row.get('phone') or row.get('Phone') or row.get('PHONE') or row.get('number') or row.get('Number') or row.get('mobile') or row.get('Mobile')
                 
-                if name and phone:
+                # If no phone column found, try first column value
+                if not phone:
+                    for key, value in row.items():
+                        if value and value.strip().replace('+', '').replace('-', '').replace(' ', '').isdigit():
+                            phone = value
+                            break
+                
+                if phone:
                     # Clean phone number
-                    phone = phone.strip().replace(' ', '').replace('-', '')
+                    phone = phone.strip().replace(' ', '').replace('-', '').replace('+', '')
+                    
+                    # If name is empty, use phone number as name
+                    if not name:
+                        name = phone
+                    
                     db.add_contact(name.strip(), phone)
                     imported_count += 1
                 else:

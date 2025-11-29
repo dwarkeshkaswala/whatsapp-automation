@@ -143,7 +143,128 @@
             </ol>
         </div>
     </div>
+
+    <!-- Settings Section -->
+    <div class="info-section">
+        <h2><i class="fas fa-cog"></i> Settings</h2>
+        <div class="info-card">
+            <div class="settings-form">
+                <div class="setting-item">
+                    <label class="switch-label">
+                        <span class="setting-name">
+                            <i class="fas fa-eye-slash"></i> Headless Mode
+                        </span>
+                        <span class="setting-desc">Run browser in background (no visible window)</span>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="headlessMode" onchange="updateSettings()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label class="switch-label" for="defaultCountryCode">
+                        <span class="setting-name">
+                            <i class="fas fa-globe"></i> Default Country Code
+                        </span>
+                        <span class="setting-desc">Auto-added when phone number doesn't have country code</span>
+                    </label>
+                    <div class="country-code-input">
+                        <span class="plus-sign">+</span>
+                        <input type="text" id="defaultCountryCode" placeholder="91" maxlength="4" onchange="updateSettings()">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+.switch-label {
+    display: flex;
+    flex-direction: column;
+}
+.setting-name {
+    font-weight: 600;
+    color: #333;
+}
+.setting-desc {
+    font-size: 12px;
+    color: #666;
+    margin-top: 3px;
+}
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+    border-radius: 26px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #25D366;
+}
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+.country-code-input {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 5px 10px;
+}
+.country-code-input .plus-sign {
+    color: #666;
+    font-weight: 600;
+    margin-right: 2px;
+}
+.country-code-input input {
+    border: none;
+    outline: none;
+    width: 60px;
+    font-size: 14px;
+    font-weight: 500;
+}
+</style>
 
 <script>
 let qrCheckInterval = null;
@@ -303,6 +424,43 @@ async function initializeBot() {
 
 // Check login status on page load
 checkLoginStatus();
+loadSettings();
+
+// Load settings from server
+async function loadSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('headlessMode').checked = data.settings.headless || false;
+            document.getElementById('defaultCountryCode').value = data.settings.default_country_code || '91';
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+// Update settings on server
+async function updateSettings() {
+    const headless = document.getElementById('headlessMode').checked;
+    const countryCode = document.getElementById('defaultCountryCode').value.trim().replace('+', '');
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ headless, default_country_code: countryCode })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showAlert('Settings saved!', 'success');
+        } else {
+            showAlert('Failed to save settings', 'error');
+        }
+    } catch (error) {
+        showAlert('Error saving settings: ' + error.message, 'error');
+    }
+}
 </script>
 {% endblock %}
 
