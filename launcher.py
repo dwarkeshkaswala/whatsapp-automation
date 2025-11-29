@@ -120,24 +120,41 @@ def check_for_updates():
     
     try:
         # Fetch latest from remote
-        result = subprocess.run(
-            [git_path, 'fetch', 'origin'],
+        print_info("Fetching from remote...")
+        fetch_result = subprocess.run(
+            [git_path, 'fetch', 'origin', 'main'],
             cwd=str(BASE_DIR),
             capture_output=True,
             text=True,
             timeout=60
         )
         
-        # Check if there are updates
-        result = subprocess.run(
-            [git_path, 'status', '-uno'],
+        if fetch_result.returncode != 0:
+            print_info(f"Fetch warning: {fetch_result.stderr}")
+        
+        # Compare local and remote commits
+        local_result = subprocess.run(
+            [git_path, 'rev-parse', 'HEAD'],
             cwd=str(BASE_DIR),
             capture_output=True,
             text=True,
             timeout=30
         )
+        local_commit = local_result.stdout.strip() if local_result.returncode == 0 else ''
         
-        if 'behind' in result.stdout.lower():
+        remote_result = subprocess.run(
+            [git_path, 'rev-parse', 'origin/main'],
+            cwd=str(BASE_DIR),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        remote_commit = remote_result.stdout.strip() if remote_result.returncode == 0 else ''
+        
+        print_info(f"Local:  {local_commit[:8] if local_commit else 'unknown'}")
+        print_info(f"Remote: {remote_commit[:8] if remote_commit else 'unknown'}")
+        
+        if local_commit and remote_commit and local_commit != remote_commit:
             print_info("Updates available! Pulling latest changes...")
             
             # Stash any local changes
@@ -148,31 +165,31 @@ def check_for_updates():
                 timeout=30
             )
             
-            # Pull latest
-            pull_result = subprocess.run(
-                [git_path, 'pull', 'origin', 'main'],
+            # Reset to remote (more reliable than pull)
+            reset_result = subprocess.run(
+                [git_path, 'reset', '--hard', 'origin/main'],
                 cwd=str(BASE_DIR),
                 capture_output=True,
                 text=True,
                 timeout=120
             )
             
-            if pull_result.returncode == 0:
+            if reset_result.returncode == 0:
                 print_success("Updated to latest version!")
-                # Check if requirements changed
-                if 'requirements.txt' in pull_result.stdout:
-                    print_info("Requirements updated, will reinstall dependencies")
-                    # Force reinstall by returning special value
-                    return 'reinstall'
+                return 'reinstall'  # Always reinstall after update to be safe
             else:
-                print_error(f"Update failed: {pull_result.stderr}")
-                # Try to restore stashed changes
-                subprocess.run(
-                    [git_path, 'stash', 'pop'],
+                print_error(f"Update failed: {reset_result.stderr}")
+                # Try pull as fallback
+                pull_result = subprocess.run(
+                    [git_path, 'pull', 'origin', 'main', '--force'],
                     cwd=str(BASE_DIR),
                     capture_output=True,
-                    timeout=30
+                    text=True,
+                    timeout=120
                 )
+                if pull_result.returncode == 0:
+                    print_success("Updated via pull!")
+                    return 'reinstall'
         else:
             print_success("Already up to date")
         
