@@ -46,11 +46,11 @@ class ColoredFormatter(logging.Formatter):
         # Format timestamp
         timestamp = datetime.fromtimestamp(record.created).strftime('%Y-%m-%d %H:%M:%S')
         
-        # Build colored message
+        # Build colored message (using ASCII pipe for Windows compatibility)
         formatted = (
             f"{Colors.TIMESTAMP}{timestamp}{Colors.RESET} "
             f"{color}{Colors.BOLD}[{record.levelname:^8}]{Colors.RESET} "
-            f"{Colors.NAME}{record.name:>15}{Colors.RESET} │ "
+            f"{Colors.NAME}{record.name:>15}{Colors.RESET} | "
             f"{color}{record.getMessage()}{Colors.RESET}"
         )
         
@@ -66,7 +66,7 @@ class FileFormatter(logging.Formatter):
     
     def format(self, record):
         timestamp = datetime.fromtimestamp(record.created).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        formatted = f"{timestamp} [{record.levelname:^8}] {record.name:>15} │ {record.getMessage()}"
+        formatted = f"{timestamp} [{record.levelname:^8}] {record.name:>15} | {record.getMessage()}"
         
         if record.exc_info:
             formatted += f"\n{self.formatException(record.exc_info)}"
