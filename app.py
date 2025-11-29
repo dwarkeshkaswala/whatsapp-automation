@@ -1,6 +1,9 @@
 import os
 import csv
 import glob
+import base64
+import requests
+import tempfile
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from dotenv import load_dotenv
@@ -21,8 +24,15 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-product
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 ATTACHMENTS_FOLDER = os.path.join(os.getcwd(), 'attachments')
 DATA_FOLDER = os.path.join(os.getcwd(), 'data')
+INVITATIONS_FOLDER = os.path.join(os.getcwd(), 'invitations')
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'csv', 'xlsx', 'mp4', 'mp3', 'zip'}
 ALLOWED_CSV_EXTENSIONS = {'csv'}
+
+# PDF Generator API
+PDF_GENERATOR_URL = os.getenv('PDF_GENERATOR_URL', 'http://localhost:5173/api/single/generate')
+
+# Bot Configuration
+BOT_HEADLESS = os.getenv('BOT_HEADLESS', 'false').lower() == 'true'  # Set to 'true' for headless mode
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -30,6 +40,8 @@ if not os.path.exists(ATTACHMENTS_FOLDER):
     os.makedirs(ATTACHMENTS_FOLDER)
 if not os.path.exists(DATA_FOLDER):
     os.makedirs(DATA_FOLDER)
+if not os.path.exists(INVITATIONS_FOLDER):
+    os.makedirs(INVITATIONS_FOLDER)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ATTACHMENTS_FOLDER'] = ATTACHMENTS_FOLDER
@@ -61,15 +73,19 @@ def index():
     return render_template('index.html', stats=stats)
 
 
+@app.route('/data/<path:filename>')
+def serve_data_file(filename):
+    """Serve files from the data folder"""
+    from flask import send_from_directory
+    return send_from_directory(DATA_FOLDER, filename)
+
+
 @app.route('/api/initialize-bot', methods=['POST'])
 def initialize_bot():
-    """Initialize the WhatsApp bot in headless mode"""
+    """Initialize the WhatsApp bot"""
     global whatsapp_bot
     
     try:
-        data = request.json or {}
-        headless = data.get('headless', False)  # Default to visible browser for debugging
-        
         # Close existing bot if any
         if whatsapp_bot is not None:
             try:
@@ -78,12 +94,12 @@ def initialize_bot():
                 pass
         
         whatsapp_bot = WhatsAppBot()
-        whatsapp_bot.initialize(headless=headless)
+        whatsapp_bot.initialize(headless=BOT_HEADLESS)
         
         return jsonify({
             'success': True, 
             'message': 'Bot initialized successfully',
-            'headless': headless
+            'headless': BOT_HEADLESS
         })
         
     except Exception as e:
@@ -170,24 +186,32 @@ def send_page():
 
 @app.route('/api/send-message', methods=['POST'])
 def send_message():
-    """API endpoint to send a WhatsApp message"""
+    """API endpoint to send a WhatsApp message with optional attachment"""
     global whatsapp_bot
     
     try:
         data = request.json
         phone = data.get('phone')
-        message = data.get('message')
+        message = data.get('message', '')
+        attachment_path = data.get('attachment_path')
+        file_type = data.get('file_type', 'image')  # image, video, audio, document
         
-        if not phone or not message:
-            return jsonify({'success': False, 'error': 'Phone and message are required'}), 400
+        if not phone:
+            return jsonify({'success': False, 'error': 'Phone is required'}), 400
+        
+        if not message and not attachment_path:
+            return jsonify({'success': False, 'error': 'Message or attachment is required'}), 400
         
         # Initialize bot if not already done
         if whatsapp_bot is None:
             whatsapp_bot = WhatsAppBot()
             whatsapp_bot.initialize()
         
-        # Send message
-        success = whatsapp_bot.send_message(phone, message)
+        # Send message with or without attachment
+        if attachment_path and os.path.exists(attachment_path):
+            success = whatsapp_bot.send_message_with_attachment(phone, message, attachment_path, file_type)
+        else:
+            success = whatsapp_bot.send_message(phone, message)
         
         if success:
             # Save to database
@@ -249,14 +273,15 @@ def history_page():
 @app.route('/contacts')
 def contacts_page():
     """Contacts management page"""
-    contacts = db.get_all_contacts()
-    return render_template('contacts.html', contacts=contacts)
+    contacts = db.get_all_contacts_with_groups()
+    groups = db.get_all_groups()
+    return render_template('contacts.html', contacts=contacts, groups=groups)
 
 
-@app.route('/automated')
-def automated_page():
-    """Automated bulk send page"""
-    return render_template('automated.html')
+@app.route('/bulk')
+def bulk_page():
+    """Bulk message send page"""
+    return render_template('bulk.html')
 
 
 @app.route('/api/contacts', methods=['POST'])
@@ -283,6 +308,23 @@ def delete_contact(contact_id):
     try:
         db.delete_contact(contact_id)
         return jsonify({'success': True, 'message': 'Contact deleted successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/contacts/<int:contact_id>', methods=['PUT'])
+def update_contact(contact_id):
+    """API endpoint to update a contact"""
+    try:
+        data = request.json
+        name = data.get('name')
+        phone = data.get('phone')
+        
+        if not name or not phone:
+            return jsonify({'success': False, 'error': 'Name and phone are required'}), 400
+        
+        db.update_contact(contact_id, name, phone)
+        return jsonify({'success': True, 'message': 'Contact updated successfully'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -333,6 +375,106 @@ def import_contacts():
             'skipped': skipped_count
         })
         
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# Contact Groups API endpoints
+@app.route('/api/groups', methods=['GET'])
+def get_groups():
+    """Get all contact groups"""
+    try:
+        groups = db.get_all_groups()
+        return jsonify({'success': True, 'groups': groups})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/groups', methods=['POST'])
+def create_group():
+    """Create a new contact group"""
+    try:
+        data = request.json
+        name = data.get('name')
+        description = data.get('description', '')
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'Group name is required'}), 400
+        
+        group_id = db.create_group(name, description)
+        return jsonify({'success': True, 'message': 'Group created successfully', 'group_id': group_id})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/groups/<int:group_id>', methods=['PUT'])
+def update_group(group_id):
+    """Update a contact group"""
+    try:
+        data = request.json
+        name = data.get('name')
+        description = data.get('description', '')
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'Group name is required'}), 400
+        
+        db.update_group(group_id, name, description)
+        return jsonify({'success': True, 'message': 'Group updated successfully'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/groups/<int:group_id>', methods=['DELETE'])
+def delete_group(group_id):
+    """Delete a contact group"""
+    try:
+        db.delete_group(group_id)
+        return jsonify({'success': True, 'message': 'Group deleted successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/groups/<int:group_id>/contacts', methods=['GET'])
+def get_group_contacts(group_id):
+    """Get all contacts in a group"""
+    try:
+        contacts = db.get_contacts_in_group(group_id)
+        return jsonify({'success': True, 'contacts': contacts})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/groups/<int:group_id>/contacts/<int:contact_id>', methods=['POST'])
+def add_contact_to_group(group_id, contact_id):
+    """Add a contact to a group"""
+    try:
+        result = db.add_contact_to_group(contact_id, group_id)
+        if result:
+            return jsonify({'success': True, 'message': 'Contact added to group'})
+        else:
+            return jsonify({'success': False, 'error': 'Contact already in group'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/groups/<int:group_id>/contacts/<int:contact_id>', methods=['DELETE'])
+def remove_contact_from_group(group_id, contact_id):
+    """Remove a contact from a group"""
+    try:
+        db.remove_contact_from_group(contact_id, group_id)
+        return jsonify({'success': True, 'message': 'Contact removed from group'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/contacts/<int:contact_id>/groups', methods=['GET'])
+def get_contact_groups(contact_id):
+    """Get all groups a contact belongs to"""
+    try:
+        groups = db.get_groups_for_contact(contact_id)
+        return jsonify({'success': True, 'groups': groups})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -649,6 +791,489 @@ def get_statistics():
     try:
         stats = db.get_statistics()
         return jsonify({'success': True, 'statistics': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============== BULK MESSAGE SEND ==============
+
+@app.route('/api/upload-attachment', methods=['POST'])
+def upload_attachment():
+    """Upload an attachment file for bulk sending"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            # Add timestamp to avoid conflicts
+            import time
+            timestamp = int(time.time())
+            name, ext = os.path.splitext(filename)
+            filename = f"{name}_{timestamp}{ext}"
+            
+            # Organize by extension subfolder
+            ext_folder = ext.lstrip('.').lower() if ext else 'other'
+            ext_folder_map = {
+                'jpg': 'images', 'jpeg': 'images', 'png': 'images', 'gif': 'images', 'webp': 'images',
+                'mp4': 'videos', 'avi': 'videos', 'mov': 'videos', 'mkv': 'videos',
+                'mp3': 'audio', 'wav': 'audio', 'ogg': 'audio', 'm4a': 'audio',
+                'pdf': 'documents', 'doc': 'documents', 'docx': 'documents', 
+                'xls': 'documents', 'xlsx': 'documents', 'ppt': 'documents', 'pptx': 'documents',
+                'txt': 'documents', 'csv': 'documents',
+                'zip': 'archives', 'rar': 'archives', '7z': 'archives',
+            }
+            subfolder = ext_folder_map.get(ext_folder, 'other')
+            upload_subfolder = os.path.join(UPLOAD_FOLDER, subfolder)
+            os.makedirs(upload_subfolder, exist_ok=True)
+            
+            filepath = os.path.join(upload_subfolder, filename)
+            file.save(filepath)
+            
+            return jsonify({
+                'success': True,
+                'filename': filename,
+                'path': filepath,
+                'folder': subfolder
+            })
+        else:
+            return jsonify({'success': False, 'error': 'File type not allowed'}), 400
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/bulk-send', methods=['POST'])
+def bulk_send():
+    """Send bulk messages with optional attachment"""
+    global whatsapp_bot
+    
+    try:
+        if not whatsapp_bot or not whatsapp_bot.is_logged_in():
+            return jsonify({'success': False, 'error': 'WhatsApp not initialized. Please initialize first.'}), 400
+        
+        data = request.get_json()
+        contacts = data.get('contacts', [])
+        message = data.get('message', '')
+        attachment_path = data.get('attachment_path')
+        attachment_type = data.get('attachment_type', 'document')  # image, document, audio, video
+        delay = int(data.get('delay', 5))
+        
+        if not contacts:
+            return jsonify({'success': False, 'error': 'No contacts provided'}), 400
+        
+        if not message and not attachment_path:
+            return jsonify({'success': False, 'error': 'Please provide a message or attachment'}), 400
+        
+        print(f"[BULK SEND] Starting bulk send to {len(contacts)} contacts")
+        print(f"[BULK SEND] Message: {message[:50]}..." if message else "[BULK SEND] No message")
+        print(f"[BULK SEND] Attachment: {attachment_path}" if attachment_path else "[BULK SEND] No attachment")
+        
+        results = []
+        import time
+        
+        for i, contact in enumerate(contacts):
+            name = contact.get('name', '')
+            number = contact.get('number', '')
+            
+            if not number:
+                results.append({
+                    'name': name,
+                    'number': number,
+                    'status': 'failed',
+                    'error': 'No phone number'
+                })
+                continue
+            
+            try:
+                print(f"[BULK SEND] Processing {i+1}/{len(contacts)}: {name} -> {number}")
+                
+                # Personalize message with name
+                personalized_message = message.replace('{name}', name) if message else ''
+                
+                if attachment_path and os.path.exists(attachment_path):
+                    # Send with attachment (pass file_type for correct WhatsApp option)
+                    success = whatsapp_bot.send_message_with_attachment(number, personalized_message, attachment_path, attachment_type)
+                else:
+                    # Send text only
+                    success = whatsapp_bot.send_message(number, personalized_message)
+                
+                status = 'sent' if success else 'failed'
+                print(f"[BULK SEND] Result: {status}")
+                
+                # Log to history
+                msg_log = f"{personalized_message}"
+                if attachment_path:
+                    msg_log = f"[Attachment: {os.path.basename(attachment_path)}] {personalized_message}"
+                db.add_message_history(number, msg_log, status)
+                
+                results.append({
+                    'name': name,
+                    'number': number,
+                    'status': status
+                })
+                
+                # Delay between messages (except for last one)
+                if i < len(contacts) - 1:
+                    print(f"[BULK SEND] Waiting {delay} seconds...")
+                    time.sleep(delay)
+                    
+            except Exception as e:
+                print(f"[BULK SEND] ERROR for {name}: {str(e)}")
+                results.append({
+                    'name': name,
+                    'number': number,
+                    'status': 'failed',
+                    'error': str(e)
+                })
+        
+        sent_count = sum(1 for r in results if r['status'] == 'sent')
+        failed_count = sum(1 for r in results if r['status'] == 'failed')
+        
+        print(f"[BULK SEND] Complete! Sent: {sent_count}, Failed: {failed_count}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Sent {sent_count}/{len(contacts)} messages',
+            'sent': sent_count,
+            'failed': failed_count,
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============== INVITATION BULK SEND ==============
+
+@app.route('/invitations')
+def invitations_page():
+    """Render the invitations page"""
+    return render_template('invitations.html')
+
+
+@app.route('/api/invitations/upload-csv', methods=['POST'])
+def upload_invitation_csv():
+    """Upload CSV file with invitation data (name, number, sangeet, jaan)"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename, ALLOWED_CSV_EXTENSIONS):
+            return jsonify({'success': False, 'error': 'Only CSV files are allowed'}), 400
+        
+        # Save the file
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(DATA_FOLDER, 'invitations.csv')
+        file.save(filepath)
+        
+        # Parse CSV and return preview
+        invitations = []
+        with open(filepath, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # Handle both English and potential variations
+                invitation = {
+                    'name': row.get('name', '').strip(),
+                    'number': row.get('number', '').strip(),
+                    'sangeet': row.get('sangeet', '').strip(),
+                    'jaan': row.get('jaan', '').strip()
+                }
+                if invitation['name'] and invitation['number']:
+                    invitations.append(invitation)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Loaded {len(invitations)} invitations',
+            'invitations': invitations
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/invitations/list')
+def list_invitations():
+    """List all invitations from the uploaded CSV"""
+    try:
+        filepath = os.path.join(DATA_FOLDER, 'invitations.csv')
+        if not os.path.exists(filepath):
+            return jsonify({'success': True, 'invitations': []})
+        
+        invitations = []
+        with open(filepath, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                invitation = {
+                    'name': row.get('name', '').strip(),
+                    'number': row.get('number', '').strip(),
+                    'sangeet': row.get('sangeet', '').strip(),
+                    'jaan': row.get('jaan', '').strip()
+                }
+                if invitation['name'] and invitation['number']:
+                    invitations.append(invitation)
+        
+        return jsonify({'success': True, 'invitations': invitations})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/invitations/generate-pdf', methods=['POST'])
+def generate_invitation_pdf():
+    """Generate PDF for a single invitation using the external API"""
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        sangeet = data.get('sangeet')
+        jaan = data.get('jaan')
+        
+        if not all([name, sangeet, jaan]):
+            return jsonify({'success': False, 'error': 'Missing required fields: name, sangeet, jaan'}), 400
+        
+        # Call the PDF generator API
+        response = requests.post(PDF_GENERATOR_URL, json={
+            'name': name,
+            'sangeet': sangeet,
+            'jaan': jaan
+        }, timeout=30)
+        
+        if response.status_code != 200:
+            return jsonify({'success': False, 'error': f'PDF generator returned status {response.status_code}'}), 500
+        
+        result = response.json()
+        if not result.get('success'):
+            return jsonify({'success': False, 'error': 'PDF generation failed'}), 500
+        
+        # Save PDF to uploads/documents folder
+        pdf_data = base64.b64decode(result['pdf_base64'])
+        pdf_filename = f"{name}.pdf"
+        pdf_subfolder = os.path.join(UPLOAD_FOLDER, 'documents')
+        os.makedirs(pdf_subfolder, exist_ok=True)
+        pdf_path = os.path.join(pdf_subfolder, pdf_filename)
+        
+        with open(pdf_path, 'wb') as f:
+            f.write(pdf_data)
+        
+        return jsonify({
+            'success': True,
+            'filename': pdf_filename,
+            'path': pdf_path
+        })
+        
+    except requests.exceptions.ConnectionError:
+        return jsonify({'success': False, 'error': 'Cannot connect to PDF generator. Make sure it is running on localhost:5173'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/invitations/send-single', methods=['POST'])
+def send_single_invitation():
+    """Generate PDF and send to a single contact"""
+    global whatsapp_bot
+    
+    try:
+        if not whatsapp_bot or not whatsapp_bot.is_logged_in():
+            return jsonify({'success': False, 'error': 'WhatsApp not initialized. Please initialize first.'}), 400
+        
+        data = request.get_json()
+        name = data.get('name')
+        number = data.get('number')
+        sangeet = data.get('sangeet')
+        jaan = data.get('jaan')
+        message = data.get('message', '')  # Optional message/caption
+        
+        if not all([name, number, sangeet, jaan]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        # Generate PDF
+        response = requests.post(PDF_GENERATOR_URL, json={
+            'name': name,
+            'sangeet': sangeet,
+            'jaan': jaan
+        }, timeout=30)
+        
+        if response.status_code != 200:
+            return jsonify({'success': False, 'error': 'PDF generation failed'}), 500
+        
+        result = response.json()
+        if not result.get('success'):
+            return jsonify({'success': False, 'error': 'PDF generation failed'}), 500
+        
+        # Save PDF to uploads/documents folder
+        pdf_data = base64.b64decode(result['pdf_base64'])
+        pdf_filename = f"{name}.pdf"
+        pdf_subfolder = os.path.join(UPLOAD_FOLDER, 'documents')
+        os.makedirs(pdf_subfolder, exist_ok=True)
+        pdf_path = os.path.join(pdf_subfolder, pdf_filename)
+        
+        with open(pdf_path, 'wb') as f:
+            f.write(pdf_data)
+        
+        # Send via WhatsApp (PDF = document type)
+        success = whatsapp_bot.send_message_with_attachment(number, message, pdf_path, 'document')
+        status = 'sent' if success else 'failed'
+        
+        # Log to history
+        db.add_message_history(number, f"[Invitation PDF: {pdf_filename}] {message}", status)
+        
+        return jsonify({
+            'success': success,
+            'message': f'Invitation {"sent" if success else "failed"} to {name}',
+            'status': status
+        })
+        
+    except requests.exceptions.ConnectionError:
+        return jsonify({'success': False, 'error': 'Cannot connect to PDF generator'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/invitations/send-bulk', methods=['POST'])
+def send_bulk_invitations():
+    """Send invitations to all contacts in the CSV"""
+    global whatsapp_bot
+    
+    try:
+        if not whatsapp_bot or not whatsapp_bot.is_logged_in():
+            return jsonify({'success': False, 'error': 'WhatsApp not initialized. Please initialize first.'}), 400
+        
+        data = request.get_json()
+        message = data.get('message', '')  # Optional caption for all
+        delay = int(data.get('delay', 5))  # Delay between messages in seconds
+        
+        # Load invitations from CSV
+        filepath = os.path.join(DATA_FOLDER, 'invitations.csv')
+        if not os.path.exists(filepath):
+            return jsonify({'success': False, 'error': 'No invitation CSV uploaded'}), 400
+        
+        invitations = []
+        with open(filepath, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                invitation = {
+                    'name': row.get('name', '').strip(),
+                    'number': row.get('number', '').strip(),
+                    'sangeet': row.get('sangeet', '').strip(),
+                    'jaan': row.get('jaan', '').strip()
+                }
+                if invitation['name'] and invitation['number']:
+                    invitations.append(invitation)
+        
+        if not invitations:
+            return jsonify({'success': False, 'error': 'No valid invitations found in CSV'}), 400
+        
+        print(f"[INVITATIONS] Found {len(invitations)} invitations to send")
+        
+        results = []
+        import time
+        
+        for i, inv in enumerate(invitations):
+            try:
+                print(f"[INVITATIONS] Processing {i+1}/{len(invitations)}: {inv['name']} -> {inv['number']}")
+                
+                # Generate PDF
+                print(f"[INVITATIONS] Calling PDF API: {PDF_GENERATOR_URL}")
+                response = requests.post(PDF_GENERATOR_URL, json={
+                    'name': inv['name'],
+                    'sangeet': inv['sangeet'],
+                    'jaan': inv['jaan']
+                }, timeout=30)
+                
+                print(f"[INVITATIONS] PDF API response status: {response.status_code}")
+                
+                if response.status_code != 200:
+                    print(f"[INVITATIONS] PDF generation failed for {inv['name']}")
+                    results.append({
+                        'name': inv['name'],
+                        'number': inv['number'],
+                        'status': 'failed',
+                        'error': 'PDF generation failed'
+                    })
+                    continue
+                
+                # Check if response is JSON or raw PDF
+                content_type = response.headers.get('Content-Type', '')
+                
+                if 'application/json' in content_type:
+                    # JSON response with base64 PDF
+                    result = response.json()
+                    if not result.get('success'):
+                        print(f"[INVITATIONS] PDF API returned error for {inv['name']}")
+                        results.append({
+                            'name': inv['name'],
+                            'number': inv['number'],
+                            'status': 'failed',
+                            'error': 'PDF generation failed'
+                        })
+                        continue
+                    pdf_data = base64.b64decode(result['pdf_base64'])
+                else:
+                    # Raw PDF response
+                    pdf_data = response.content
+                
+                # Save PDF to uploads/documents
+                print(f"[INVITATIONS] Saving PDF for {inv['name']}")
+                pdf_filename = f"{inv['name']}.pdf"
+                pdf_subfolder = os.path.join(UPLOAD_FOLDER, 'documents')
+                os.makedirs(pdf_subfolder, exist_ok=True)
+                pdf_path = os.path.join(pdf_subfolder, pdf_filename)
+                
+                with open(pdf_path, 'wb') as f:
+                    f.write(pdf_data)
+                
+                print(f"[INVITATIONS] PDF saved to {pdf_path}")
+                
+                # Send via WhatsApp (PDF = document type)
+                print(f"[INVITATIONS] Sending WhatsApp to {inv['number']}")
+                success = whatsapp_bot.send_message_with_attachment(inv['number'], message, pdf_path, 'document')
+                status = 'sent' if success else 'failed'
+                print(f"[INVITATIONS] WhatsApp send result: {status}")
+                
+                # Log to history
+                db.add_message_history(inv['number'], f"[Invitation PDF: {pdf_filename}] {message}", status)
+                
+                results.append({
+                    'name': inv['name'],
+                    'number': inv['number'],
+                    'status': status
+                })
+                
+                # Delay between messages (except for last one)
+                if i < len(invitations) - 1:
+                    print(f"[INVITATIONS] Waiting {delay} seconds...")
+                    time.sleep(delay)
+                    
+            except Exception as e:
+                print(f"[INVITATIONS] ERROR for {inv['name']}: {str(e)}")
+                results.append({
+                    'name': inv['name'],
+                    'number': inv['number'],
+                    'status': 'failed',
+                    'error': str(e)
+                })
+        
+        sent_count = sum(1 for r in results if r['status'] == 'sent')
+        failed_count = sum(1 for r in results if r['status'] == 'failed')
+        
+        print(f"[INVITATIONS] Complete! Sent: {sent_count}, Failed: {failed_count}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Sent {sent_count}/{len(invitations)} invitations',
+            'sent': sent_count,
+            'failed': failed_count,
+            'results': results
+        })
+        
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

@@ -444,7 +444,16 @@ if ($args[0] -eq "--production" -or $args[0] -eq "-p") {
 
 def create_directories(base_dir):
     """Create necessary directories"""
-    dirs = ['uploads', 'attachments', 'session', 'whatsapp_profile', 'logs']
+    dirs = [
+        'data',
+        'uploads',
+        'uploads/images',
+        'attachments',
+        'invitations',
+        'whatsapp_profile',
+        'static/images',
+        'logs'
+    ]
     
     for dir_name in dirs:
         dir_path = os.path.join(base_dir, dir_name)

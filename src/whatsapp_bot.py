@@ -17,6 +17,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('WhatsAppBot')
@@ -49,7 +50,9 @@ class WhatsAppBot:
         'side_panel': '//div[@id="side"]',
         'message_input': ['//div[@contenteditable="true"][@data-tab="10"]', '//div[@title="Type a message"]', '//footer//div[@contenteditable="true"]'],
         'attachment_button': ['//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[1]/div/span/button', '//footer//button[contains(@aria-label, "Attach")]', '//span[@data-icon="plus"]/..'],
-        'document_option': ['//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div', '//li[contains(@data-animate-dropdown-item, "true")][1]//div'],
+        'document_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div/input',
+        'photo_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[2]/li/div/input',
+        'audio_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[4]/li/div/input',
         'file_input': '//input[@type="file"]',
         'caption_input': ['//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div[1]/div[1]', '//div[@contenteditable="true"][@data-tab="10"]'],
         'send_button': ['//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/div/div', '//span[@data-icon="send"]/..'],
@@ -275,7 +278,11 @@ class WhatsAppBot:
             traceback.print_exc()
             return False
     
-    def send_message_with_attachment(self, phone, message, file_path):
+    def send_message_with_attachment(self, phone, message, file_path, file_type='document'):
+        """
+        Send a message with an attachment.
+        file_type: 'image', 'document', 'audio', 'video' (image/video use photo option, others use document)
+        """
         try:
             if not self.driver:
                 print("Bot not initialized")
@@ -288,33 +295,82 @@ class WhatsAppBot:
             if not success:
                 return False
             phone = result
-            print(f"Sending attachment to {phone}...")
+            print(f"Sending attachment ({file_type}) to {phone}...")
+            
+            # Click attachment button to open menu
             attach_btn = self._find_element(self.SELECTORS['attachment_button'])
             if not attach_btn:
                 print("Could not find attachment button")
                 return False
             attach_btn.click()
-            time.sleep(2)
-            doc_btn = self._find_element_no_wait(self.SELECTORS['document_option'])
-            if doc_btn:
-                doc_btn.click()
-                time.sleep(2)
-            inputs = self.driver.find_elements(By.XPATH, self.SELECTORS['file_input'])
-            if not inputs:
-                print("Could not find file input")
-                return False
-            inputs[0].send_keys(file_path)
-            print(f"File uploaded: {file_path}")
+            time.sleep(1)
+            
+            # Select correct input based on file type
+            if file_type in ['image', 'video']:
+                input_xpath = self.SELECTORS['photo_input']
+                input_name = 'photo/video'
+            elif file_type == 'audio':
+                input_xpath = self.SELECTORS['audio_input']
+                input_name = 'audio'
+            else:
+                input_xpath = self.SELECTORS['document_input']
+                input_name = 'document'
+            
+            # Find and use the file input directly
+            try:
+                file_input = self.driver.find_element(By.XPATH, input_xpath)
+                file_input.send_keys(file_path)
+                print(f"File sent to {input_name} input: {file_path}")
+            except Exception as e:
+                print(f"Could not find {input_name} input: {e}")
+                # Fallback to generic file input
+                inputs = self.driver.find_elements(By.XPATH, self.SELECTORS['file_input'])
+                if not inputs:
+                    print("Could not find any file input")
+                    return False
+                inputs[0].send_keys(file_path)
+                print(f"File sent via fallback input: {file_path}")
+            
             time.sleep(4)
+            
+            # Add caption if provided
             if message:
-                cap = self._find_element_no_wait(self.SELECTORS['caption_input'])
-                if cap:
+                caption_added = False
+                
+                # Primary caption XPath (from user)
+                caption_xpath = '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]/p'
+                
+                try:
+                    # Wait for caption input to be present
+                    cap = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, caption_xpath))
+                    )
+                    # Click on the paragraph element
+                    cap.click()
+                    time.sleep(0.3)
+                    # Type the message
+                    cap.send_keys(message)
+                    caption_added = True
+                    print("Caption added successfully")
+                except Exception as e:
+                    print(f"Primary caption method failed: {e}")
+                    
+                    # Fallback: Try clicking parent div and typing
                     try:
-                        cap.click()
+                        parent_xpath = '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]'
+                        parent = self.driver.find_element(By.XPATH, parent_xpath)
+                        parent.click()
                         time.sleep(0.3)
-                        cap.send_keys(message)
-                    except Exception as e:
-                        print(f"Could not add caption: {e}")
+                        actions = ActionChains(self.driver)
+                        actions.send_keys(message).perform()
+                        caption_added = True
+                        print("Caption added via parent element")
+                    except Exception as e2:
+                        print(f"Parent element method failed: {e2}")
+                
+                if not caption_added:
+                    print("Warning: Could not add caption, sending without caption")
+            
             time.sleep(1)
             send_btn = self._find_element(self.SELECTORS['send_button'], timeout=5)
             if not send_btn:

@@ -39,6 +39,29 @@ class Database:
                 )
             ''')
             
+            # Create contact groups table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS contact_groups (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Create junction table for contacts and groups (many-to-many)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS contact_group_members (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    contact_id INTEGER NOT NULL,
+                    group_id INTEGER NOT NULL,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+                    FOREIGN KEY (group_id) REFERENCES contact_groups(id) ON DELETE CASCADE,
+                    UNIQUE(contact_id, group_id)
+                )
+            ''')
+            
             # Create message history table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS message_history (
@@ -96,6 +119,121 @@ class Database:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM contacts WHERE id = ?', (contact_id,))
     
+    def update_contact(self, contact_id, name, phone):
+        """Update a contact"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE contacts SET name = ?, phone = ? WHERE id = ?',
+                (name, phone, contact_id)
+            )
+    
+    # Contact Group operations
+    def create_group(self, name, description=''):
+        """Create a new contact group"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'INSERT INTO contact_groups (name, description) VALUES (?, ?)',
+                (name, description)
+            )
+            return cursor.lastrowid
+    
+    def get_all_groups(self):
+        """Get all contact groups with member count"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT g.*, COUNT(cgm.contact_id) as member_count
+                FROM contact_groups g
+                LEFT JOIN contact_group_members cgm ON g.id = cgm.group_id
+                GROUP BY g.id
+                ORDER BY g.name
+            ''')
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def get_group_by_id(self, group_id):
+        """Get a group by ID"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM contact_groups WHERE id = ?', (group_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+    
+    def update_group(self, group_id, name, description=''):
+        """Update a group"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE contact_groups SET name = ?, description = ? WHERE id = ?',
+                (name, description, group_id)
+            )
+    
+    def delete_group(self, group_id):
+        """Delete a group and its memberships"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM contact_group_members WHERE group_id = ?', (group_id,))
+            cursor.execute('DELETE FROM contact_groups WHERE id = ?', (group_id,))
+    
+    def add_contact_to_group(self, contact_id, group_id):
+        """Add a contact to a group"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    'INSERT INTO contact_group_members (contact_id, group_id) VALUES (?, ?)',
+                    (contact_id, group_id)
+                )
+                return True
+            except sqlite3.IntegrityError:
+                return False  # Already in group
+    
+    def remove_contact_from_group(self, contact_id, group_id):
+        """Remove a contact from a group"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'DELETE FROM contact_group_members WHERE contact_id = ? AND group_id = ?',
+                (contact_id, group_id)
+            )
+    
+    def get_contacts_in_group(self, group_id):
+        """Get all contacts in a specific group"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT c.* FROM contacts c
+                INNER JOIN contact_group_members cgm ON c.id = cgm.contact_id
+                WHERE cgm.group_id = ?
+                ORDER BY c.name
+            ''', (group_id,))
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def get_groups_for_contact(self, contact_id):
+        """Get all groups a contact belongs to"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT g.* FROM contact_groups g
+                INNER JOIN contact_group_members cgm ON g.id = cgm.group_id
+                WHERE cgm.contact_id = ?
+                ORDER BY g.name
+            ''', (contact_id,))
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def get_all_contacts_with_groups(self):
+        """Get all contacts with their group memberships"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM contacts ORDER BY name')
+            contacts = [dict(row) for row in cursor.fetchall()]
+            
+            for contact in contacts:
+                contact['groups'] = self.get_groups_for_contact(contact['id'])
+            
+            return contacts
+
     # Message history operations
     def add_message_history(self, phone, message, status='sent'):
         """Add a message to history"""

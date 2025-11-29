@@ -27,8 +27,11 @@
                 <li><a href="/contacts" class="{% if request.path == '/contacts' %}active{% endif %}">
                     <i class="fas fa-address-book"></i> Contacts
                 </a></li>
-                <li><a href="/automated" class="{% if request.path == '/automated' %}active{% endif %}">
-                    <i class="fas fa-robot"></i> Automated Bulk
+                <li><a href="/bulk" class="{% if request.path == '/bulk' %}active{% endif %}">
+                    <i class="fas fa-paper-plane"></i> Bulk Send
+                </a></li>
+                <li><a href="/invitations" class="{% if request.path == '/invitations' %}active{% endif %}">
+                    <i class="fas fa-envelope-open-text"></i> Invitations
                 </a></li>
                 <li><a href="/history" class="{% if request.path == '/history' %}active{% endif %}">
                     <i class="fas fa-history"></i> History

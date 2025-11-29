@@ -16,6 +16,18 @@ echo "║        WhatsApp Automation Bot                    ║"
 echo "╚═══════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
+# Create required folder structure
+echo -e "${YELLOW}Checking folder structure...${NC}"
+mkdir -p data
+mkdir -p uploads/images
+mkdir -p attachments
+mkdir -p invitations
+mkdir -p whatsapp_profile
+mkdir -p static/images
+mkdir -p logs
+echo -e "${GREEN}Folders ready!${NC}"
+echo ""
+
 # Check if virtual environment exists
 if [ ! -d "venv" ]; then
     echo -e "${YELLOW}Virtual environment not found. Running setup...${NC}"

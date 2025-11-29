@@ -6,9 +6,10 @@
 {% block content %}
 <div class="contacts-page">
     <div class="row">
+        <!-- Left Column: Add Contact & Groups -->
         <div class="col-md-4">
             <div class="card">
-                <h3>Add New Contact</h3>
+                <h3><i class="fas fa-user-plus"></i> Add New Contact</h3>
                 <form id="addContactForm">
                     <div class="form-group">
                         <label for="contactName">Name</label>
@@ -19,8 +20,8 @@
                     <div class="form-group">
                         <label for="contactPhone">Phone Number</label>
                         <input type="tel" id="contactPhone" name="phone" class="form-control" 
-                               placeholder="+1234567890" required>
-                        <small>Include country code</small>
+                               placeholder="919876543210" required>
+                        <small>Include country code without +</small>
                     </div>
 
                     <button type="submit" class="btn btn-primary">
@@ -30,7 +31,7 @@
             </div>
 
             <div class="card">
-                <h3>Import from CSV</h3>
+                <h3><i class="fas fa-file-upload"></i> Import from CSV</h3>
                 <form id="importCsvForm" enctype="multipart/form-data">
                     <div class="form-group">
                         <label for="csvFile">Upload CSV File</label>
@@ -43,25 +44,75 @@
                         <i class="fas fa-file-upload"></i> Import Contacts
                     </button>
                 </form>
+            </div>
+
+            <!-- Groups Section -->
+            <div class="card">
+                <h3><i class="fas fa-layer-group"></i> Contact Groups</h3>
+                <form id="createGroupForm">
+                    <div class="form-group">
+                        <label for="groupName">Group Name</label>
+                        <input type="text" id="groupName" class="form-control" placeholder="Family, Work, etc." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupDescription">Description (Optional)</label>
+                        <input type="text" id="groupDescription" class="form-control" placeholder="Description">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create Group
+                    </button>
+                </form>
                 
-                <div class="csv-info">
-                    <p><strong>CSV Format Example:</strong></p>
-                    <pre>name,phone
-John Doe,+1234567890
-Jane Smith,+9876543210</pre>
+                <hr>
+                
+                <div class="groups-list" id="groupsList">
+                    {% if groups %}
+                        {% for group in groups %}
+                        <div class="group-item" data-id="{{ group.id }}">
+                            <div class="group-info">
+                                <span class="group-name">{{ group.name }}</span>
+                                <span class="group-count">{{ group.member_count }} contacts</span>
+                            </div>
+                            <div class="group-actions">
+                                <button class="btn btn-sm btn-primary view-group" data-id="{{ group.id }}" data-name="{{ group.name }}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger delete-group" data-id="{{ group.id }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center">No groups created yet</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
+        <!-- Right Column: Contacts Table -->
         <div class="col-md-8">
             <div class="card">
-                <h3>Your Contacts ({{ contacts|length }})</h3>
+                <div class="card-header-flex">
+                    <h3><i class="fas fa-address-book"></i> Your Contacts ({{ contacts|length }})</h3>
+                    <div class="filter-group">
+                        <label>Filter by Group:</label>
+                        <select id="groupFilter" class="form-control">
+                            <option value="">All Contacts</option>
+                            {% for group in groups %}
+                            <option value="{{ group.id }}">{{ group.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>Country Code</th>
                                 <th>Phone</th>
+                                <th>Groups</th>
                                 <th>Added On</th>
                                 <th>Actions</th>
                             </tr>
@@ -69,13 +120,36 @@ Jane Smith,+9876543210</pre>
                         <tbody id="contactsTable">
                             {% if contacts %}
                                 {% for contact in contacts %}
-                                <tr data-id="{{ contact.id }}">
+                                {% set phone_str = contact.phone|string %}
+                                {% set country_code = phone_str[:2] if phone_str|length >= 10 else '' %}
+                                {% set phone_number = phone_str[2:] if phone_str|length >= 10 else phone_str %}
+                                <tr data-id="{{ contact.id }}" data-groups="{{ contact.groups|map(attribute='id')|list|join(',') }}"
+                                    data-name="{{ contact.name }}" data-phone="{{ contact.phone }}">
                                     <td>{{ contact.name }}</td>
-                                    <td>{{ contact.phone }}</td>
+                                    <td>{{ country_code }}</td>
+                                    <td>{{ phone_number }}</td>
+                                    <td class="groups-cell">
+                                        {% if contact.groups %}
+                                            {% for group in contact.groups %}
+                                            <span class="group-badge">{{ group.name }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ contact.created_at }}</td>
-                                    <td>
+                                    <td class="actions-cell">
+                                        <button class="btn btn-sm btn-primary manage-groups" 
+                                                data-id="{{ contact.id }}" data-name="{{ contact.name }}"
+                                                title="Manage Groups">
+                                            <i class="fas fa-layer-group"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-warning edit-contact" 
+                                                data-id="{{ contact.id }}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                         <button class="btn btn-sm btn-danger delete-contact" 
-                                                data-id="{{ contact.id }}">
+                                                data-id="{{ contact.id }}" title="Delete">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -83,13 +157,92 @@ Jane Smith,+9876543210</pre>
                                 {% endfor %}
                             {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted">No contacts found</td>
+                                    <td colspan="6" class="text-center text-muted">No contacts found</td>
                                 </tr>
                             {% endif %}
                         </tbody>
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Groups Modal -->
+<div id="manageGroupsModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-layer-group"></i> Manage Groups for <span id="contactNameInModal"></span></h3>
+            <button class="modal-close" onclick="closeManageGroupsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="modalContactId">
+            <p>Select groups for this contact:</p>
+            <div id="groupCheckboxes" class="group-checkboxes">
+                {% for group in groups %}
+                <label class="group-checkbox-label">
+                    <input type="checkbox" value="{{ group.id }}" class="group-checkbox">
+                    <span>{{ group.name }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            {% if not groups %}
+            <p class="text-muted">No groups available. Create a group first.</p>
+            {% endif %}
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeManageGroupsModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveContactGroups()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- View Group Modal -->
+<div id="viewGroupModal" class="modal" style="display: none;">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3><i class="fas fa-users"></i> <span id="viewGroupName"></span></h3>
+            <button class="modal-close" onclick="closeViewGroupModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="viewGroupId">
+            <div id="groupContactsList">
+                <p class="text-muted text-center">Loading contacts...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeViewGroupModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Contact Modal -->
+<div id="editContactModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Edit Contact</h3>
+            <button class="modal-close" onclick="closeEditContactModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editContactId">
+            <div class="form-group">
+                <label for="editContactName">Name</label>
+                <input type="text" id="editContactName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="editContactCountryCode">Country Code</label>
+                <input type="text" id="editContactCountryCode" class="form-control" placeholder="91" required>
+                <small>Without + sign</small>
+            </div>
+            <div class="form-group">
+                <label for="editContactPhone">Phone Number</label>
+                <input type="tel" id="editContactPhone" class="form-control" required>
+                <small>Without country code</small>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeEditContactModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEditedContact()">Save Changes</button>
         </div>
     </div>
 </div>

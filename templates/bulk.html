@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Send - WhatsApp Bot{% endblock %}
+
+{% block page_title %}Bulk Message Sender{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bulk.css') }}">
+
+<div class="bulk-container">
+    <!-- Contact Input Section -->
+    <div class="card contact-input-card">
+        <div class="card-header">
+            <h3><i class="fas fa-user-plus"></i> Add Contacts</h3>
+        </div>
+        <div class="card-body">
+            <div class="input-methods">
+                <div class="method-tabs">
+                    <button class="tab-btn active" data-tab="manual">Manual Entry</button>
+                    <button class="tab-btn" data-tab="csv">CSV Upload</button>
+                </div>
+                
+                <div class="tab-content active" id="manual-tab">
+                    <div class="form-group">
+                        <label>Enter Phone Numbers (one per line or comma separated)</label>
+                        <textarea id="phoneNumbers" class="form-control" rows="4" placeholder="919876543210&#10;918765432109&#10;or&#10;919876543210, 918765432109"></textarea>
+                    </div>
+                    <button id="addContactsBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add to List
+                    </button>
+                </div>
+                
+                <div class="tab-content" id="csv-tab">
+                    <div class="form-group">
+                        <label>Upload CSV File</label>
+                        <div class="csv-upload-area">
+                            <input type="file" id="csvFile" accept=".csv">
+                            <p class="help-text">CSV should have columns: phone, name (optional)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact List Section -->
+    <div class="card contact-list-card">
+        <div class="card-header">
+            <h3><i class="fas fa-users"></i> Contact List (<span id="contactCount">0</span>)</h3>
+            <div class="header-actions">
+                <button id="selectAllBtn" class="btn btn-sm btn-secondary">Select All</button>
+                <button id="removeSelectedBtn" class="btn btn-sm btn-danger">Remove Selected</button>
+                <button id="clearAllBtn" class="btn btn-sm btn-outline">Clear All</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="contact-table-wrapper">
+                <table class="contact-table">
+                    <thead>
+                        <tr>
+                            <th class="checkbox-col"><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th>Country Code</th>
+                            <th>Phone</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contactTableBody">
+                        <tr class="empty-row">
+                            <td colspan="6">No contacts added yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Section -->
+    <div class="card message-card">
+        <div class="card-header">
+            <h3><i class="fas fa-comment-dots"></i> Message</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>Message Template</label>
+                <textarea id="messageTemplate" class="form-control" rows="4" placeholder="Hello {name}, this is a bulk message...&#10;&#10;Use {name} to personalize with contact's name"></textarea>
+                <small class="help-text">Use {name} placeholder for personalization</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="hasAttachment">
+                    <span>Include Attachment</span>
+                </label>
+            </div>
+            
+            <div class="form-group attachment-options" id="attachmentOptions" style="display: none;">
+                <label>Attachment Type</label>
+                <div class="attachment-section">
+                    <div class="attachment-type-selector">
+                        <label class="type-option">
+                            <input type="radio" name="attachmentType" value="image" checked>
+                            <span><i class="fas fa-image"></i> Image</span>
+                        </label>
+                        <label class="type-option">
+                            <input type="radio" name="attachmentType" value="video">
+                            <span><i class="fas fa-video"></i> Video</span>
+                        </label>
+                        <label class="type-option">
+                            <input type="radio" name="attachmentType" value="audio">
+                            <span><i class="fas fa-music"></i> Audio</span>
+                        </label>
+                        <label class="type-option">
+                            <input type="radio" name="attachmentType" value="document">
+                            <span><i class="fas fa-file"></i> Document</span>
+                        </label>
+                    </div>
+                    <div class="attachment-upload-area">
+                        <input type="file" id="attachmentFile" accept="image/*">
+                    </div>
+                    <div id="attachmentPreview" class="attachment-preview"></div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Delay Between Messages (seconds)</label>
+                <input type="number" id="messageDelay" class="form-control" value="5" min="1" max="60">
+                <small class="help-text">Recommended: 5-10 seconds to avoid WhatsApp restrictions</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Control Section -->
+    <div class="card send-control-card">
+        <div class="card-header">
+            <h3><i class="fas fa-rocket"></i> Send Controls</h3>
+        </div>
+        <div class="card-body">
+            <div class="progress-section" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="progress-stats">
+                    <span class="sent-count">0</span> / <span class="total-count">0</span> sent
+                </div>
+            </div>
+            
+            <div class="send-buttons">
+                <button id="startSendBtn" class="btn btn-success btn-lg">
+                    <i class="fas fa-play"></i> Start Sending
+                </button>
+                <button id="pauseSendBtn" class="btn btn-warning btn-lg" style="display: none;">
+                    <i class="fas fa-pause"></i> Pause
+                </button>
+                <button id="stopSendBtn" class="btn btn-danger btn-lg" style="display: none;">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
+            
+            <div class="send-log">
+                <h4><i class="fas fa-list-alt"></i> Send Log</h4>
+                <div id="sendLogContent" class="log-content">
+                    <p class="empty-log">No messages sent yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Contact Modal -->
+<div id="editContactModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-edit"></i> Edit Contact</h3>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editContactIndex">
+            <div class="form-group">
+                <label>Country Code (without +)</label>
+                <input type="text" id="editCountryCode" class="form-control" placeholder="91">
+            </div>
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="text" id="editPhone" class="form-control" placeholder="9876543210">
+            </div>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="editName" class="form-control" placeholder="Contact Name">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveContactEdit()">Save</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/bulk.js') }}"></script>
+{% endblock %}

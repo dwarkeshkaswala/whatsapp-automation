@@ -61,7 +61,11 @@ uploads/
 # Attachments
 attachments/
 
-# Data (except samples)
-data/*.db
+# Invitations (generated PDFs)
+invitations/
+
+# Data folder (database and user data)
+data/
 !data/sample_contacts.csv
 !data/sample_contacts_gujarati.csv
+!data/sample_invitations.csv

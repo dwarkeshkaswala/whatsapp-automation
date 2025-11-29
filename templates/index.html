@@ -260,8 +260,7 @@ async function initializeBot() {
     try {
         const response = await fetch('/api/initialize-bot', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ headless: true })
+            headers: { 'Content-Type': 'application/json' }
         });
         
         const data = await response.json();
