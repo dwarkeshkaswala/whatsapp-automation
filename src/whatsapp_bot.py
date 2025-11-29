@@ -6,7 +6,6 @@ Supports: Chrome, Brave, Firefox, Edge
 import time
 import platform
 import os
-import logging
 from pathlib import Path
 
 from selenium import webdriver
@@ -19,8 +18,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('WhatsAppBot')
+from src.logger import get_logger, bot_logger
+
+logger = bot_logger
 
 
 class WhatsAppBot:
@@ -240,8 +240,10 @@ class WhatsAppBot:
             
             # Set XPath profile based on OS and browser
             self.xpath_profile = self._get_xpath_profile_key()
-            print(f"Using browser: {browser_path}")
-            print(f"XPath profile: {self.xpath_profile}")
+            logger.info(f"Initializing bot with {browser_type}")
+            logger.info(f"Browser path: {browser_path}")
+            logger.info(f"XPath profile: {self.xpath_profile}")
+            logger.info(f"Headless mode: {headless}")
             
             if browser_type == 'firefox':
                 options = self._create_firefox_options(browser_path, headless)
@@ -251,15 +253,13 @@ class WhatsAppBot:
                 self.driver = webdriver.Chrome(options=options)
                 self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {'source': 'Object.defineProperty(navigator, "webdriver", {get: () => undefined})'})
             self.wait = WebDriverWait(self.driver, 30)
-            print("Opening WhatsApp Web...")
+            logger.info("Opening WhatsApp Web...")
             self.driver.get('https://web.whatsapp.com')
-            print("Browser opened! Please scan QR code if needed.")
+            logger.info("Browser opened! Waiting for QR scan...")
             time.sleep(3)
             return True
         except Exception as e:
-            print(f"Error: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Bot initialization failed: {e}", exc_info=True)
             self._cleanup()
             raise
     
@@ -267,6 +267,7 @@ class WhatsAppBot:
         if self.driver:
             try:
                 self.driver.quit()
+                logger.info("Browser closed")
             except:
                 pass
         self.driver = None
@@ -366,16 +367,16 @@ class WhatsAppBot:
     def send_message(self, phone, message):
         try:
             if not self.driver:
-                print("Bot not initialized")
+                logger.warning("Bot not initialized")
                 return False
             success, result = self._open_chat(phone)
             if not success:
                 return False
             phone = result
-            print(f"Sending message to {phone}...")
+            logger.debug(f"Sending text message to {phone}")
             box = self._find_element(self.SELECTORS['message_input'])
             if not box:
-                print(f"Could not find message input for {phone}")
+                logger.error(f"Could not find message input for {phone}")
                 return False
             box.click()
             time.sleep(0.3)
@@ -386,13 +387,11 @@ class WhatsAppBot:
                     box.send_keys(Keys.SHIFT + Keys.ENTER)
             time.sleep(0.3)
             box.send_keys(Keys.ENTER)
-            print(f"Message sent to {phone}")
+            logger.info(f"Message sent to {phone}")
             time.sleep(2)
             return True
         except Exception as e:
-            print(f"Error sending to {phone}: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error sending to {phone}: {e}", exc_info=True)
             return False
     
     def send_message_with_attachment(self, phone, message, file_path, file_type='document'):
@@ -402,22 +401,22 @@ class WhatsAppBot:
         """
         try:
             if not self.driver:
-                print("Bot not initialized")
+                logger.warning("Bot not initialized")
                 return False
             if not os.path.exists(file_path):
-                print(f"File not found: {file_path}")
+                logger.error(f"File not found: {file_path}")
                 return False
             file_path = os.path.abspath(file_path)
             success, result = self._open_chat(phone)
             if not success:
                 return False
             phone = result
-            print(f"Sending attachment ({file_type}) to {phone}...")
+            logger.info(f"Sending attachment ({file_type}) to {phone}")
             
             # Click attachment button to open menu
             attach_btn = self._find_element(self._get_selector('attachment_button'))
             if not attach_btn:
-                print("Could not find attachment button")
+                logger.error("Could not find attachment button")
                 return False
             attach_btn.click()
             time.sleep(1)
@@ -437,16 +436,16 @@ class WhatsAppBot:
             try:
                 file_input = self.driver.find_element(By.XPATH, input_xpath)
                 file_input.send_keys(file_path)
-                print(f"File sent to {input_name} input: {file_path}")
+                logger.debug(f"File sent to {input_name} input")
             except Exception as e:
-                print(f"Could not find {input_name} input: {e}")
+                logger.warning(f"Could not find {input_name} input: {e}")
                 # Fallback to generic file input
                 inputs = self.driver.find_elements(By.XPATH, self._get_selector('file_input'))
                 if not inputs:
-                    print("Could not find any file input")
+                    logger.error("Could not find any file input")
                     return False
                 inputs[0].send_keys(file_path)
-                print(f"File sent via fallback input: {file_path}")
+                logger.debug("File sent via fallback input")
             
             time.sleep(4)
             
@@ -474,9 +473,9 @@ class WhatsAppBot:
                         # Type the message
                         cap.send_keys(message)
                         caption_added = True
-                        print(f"Caption added successfully using: {caption_xpath}")
+                        logger.debug(f"Caption added using selector")
                     except Exception as e:
-                        print(f"Caption selector failed: {caption_xpath} - {e}")
+                        logger.debug(f"Caption selector failed: {e}")
                 
                 # Fallback: Try ActionChains if direct input failed
                 if not caption_added:
@@ -485,12 +484,12 @@ class WhatsAppBot:
                         actions = ActionChains(self.driver)
                         actions.send_keys(message).perform()
                         caption_added = True
-                        print("Caption added via ActionChains fallback")
+                        logger.debug("Caption added via ActionChains fallback")
                     except Exception as e2:
-                        print(f"ActionChains fallback failed: {e2}")
+                        logger.warning(f"ActionChains fallback failed: {e2}")
                 
                 if not caption_added:
-                    print("Warning: Could not add caption, sending without caption")
+                    logger.warning("Could not add caption, sending without caption")
             
             time.sleep(1)
             # Use attachment_send_button for the send button in attachment dialog
@@ -499,16 +498,14 @@ class WhatsAppBot:
                 # Fallback to regular send button
                 send_btn = self._find_element(self._get_selector('send_button'), timeout=5)
             if not send_btn:
-                print("Could not find send button")
+                logger.error("Could not find send button")
                 return False
             send_btn.click()
-            print(f"Attachment sent to {phone}")
+            logger.info(f"Attachment sent to {phone}")
             time.sleep(5)
             return True
         except Exception as e:
-            print(f"Error sending attachment to {phone}: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error sending attachment to {phone}: {e}", exc_info=True)
             return False
     
     def send_bulk_messages(self, contacts, message, delay=5):
@@ -522,6 +519,7 @@ class WhatsAppBot:
         return results
     
     def close(self):
+        logger.info("Closing WhatsApp bot")
         self._cleanup()
 
 

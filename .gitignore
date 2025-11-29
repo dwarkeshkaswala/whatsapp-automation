@@ -35,8 +35,11 @@ instance/
 *.sqlite
 *.sqlite3
 
-# Selenium
+# Logs
+logs/
 *.log
+
+# Selenium
 chromedriver
 geckodriver
 

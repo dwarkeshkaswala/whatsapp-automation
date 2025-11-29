@@ -3,12 +3,17 @@ import os
 from datetime import datetime
 from contextlib import contextmanager
 
+from src.logger import get_logger, db_logger
+
+logger = db_logger
+
 
 class Database:
     def __init__(self, db_path='whatsapp_bot.db'):
         """Initialize the database"""
         self.db_path = db_path
         self.init_database()
+        logger.info(f"Database initialized: {db_path}")
     
     @contextmanager
     def get_connection(self):
@@ -20,6 +25,7 @@ class Database:
             conn.commit()
         except Exception as e:
             conn.rollback()
+            logger.error(f"Database error: {e}")
             raise e
         finally:
             conn.close()

@@ -12,10 +12,14 @@ import json
 from werkzeug.utils import secure_filename
 from src.whatsapp_bot import WhatsAppBot
 from src.database import Database
+from src.logger import get_logger, app_logger, scheduler_logger
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Load environment variables
 load_dotenv()
+
+# Initialize logger
+logger = app_logger
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -455,8 +459,9 @@ def import_contacts():
                     skipped_count += 1
             except Exception as row_error:
                 skipped_count += 1
-                print(f"Error importing row: {str(row_error)}")
+                logger.warning(f"Error importing row: {str(row_error)}")
         
+        logger.info(f"Contact import complete: {imported_count} imported, {skipped_count} skipped")
         return jsonify({
             'success': True,
             'message': f'Imported {imported_count} contacts. Skipped {skipped_count} invalid entries.',
@@ -465,6 +470,7 @@ def import_contacts():
         })
         
     except Exception as e:
+        logger.error(f"Contact import failed: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -958,9 +964,9 @@ def bulk_send():
         if not message and not attachment_path:
             return jsonify({'success': False, 'error': 'Please provide a message or attachment'}), 400
         
-        print(f"[BULK SEND] Starting bulk send to {len(contacts)} contacts")
-        print(f"[BULK SEND] Message: {message[:50]}..." if message else "[BULK SEND] No message")
-        print(f"[BULK SEND] Attachment: {attachment_path}" if attachment_path else "[BULK SEND] No attachment")
+        logger.info(f"Starting bulk send to {len(contacts)} contacts")
+        logger.debug(f"Message: {message[:50]}..." if message else "No message")
+        logger.debug(f"Attachment: {attachment_path}" if attachment_path else "No attachment")
         
         results = []
         import time
@@ -979,7 +985,7 @@ def bulk_send():
                 continue
             
             try:
-                print(f"[BULK SEND] Processing {i+1}/{len(contacts)}: {name} -> {number}")
+                logger.info(f"Processing {i+1}/{len(contacts)}: {name} -> {number}")
                 
                 # Personalize message with name
                 personalized_message = message.replace('{name}', name) if message else ''
@@ -992,7 +998,10 @@ def bulk_send():
                     success = whatsapp_bot.send_message(number, personalized_message)
                 
                 status = 'sent' if success else 'failed'
-                print(f"[BULK SEND] Result: {status}")
+                if success:
+                    logger.info(f"Message sent to {number}")
+                else:
+                    logger.warning(f"Failed to send message to {number}")
                 
                 # Log to history
                 msg_log = f"{personalized_message}"
@@ -1008,11 +1017,11 @@ def bulk_send():
                 
                 # Delay between messages (except for last one)
                 if i < len(contacts) - 1:
-                    print(f"[BULK SEND] Waiting {delay} seconds...")
+                    logger.debug(f"Waiting {delay} seconds before next message...")
                     time.sleep(delay)
                     
             except Exception as e:
-                print(f"[BULK SEND] ERROR for {name}: {str(e)}")
+                logger.error(f"Error sending to {name} ({number}): {str(e)}")
                 results.append({
                     'name': name,
                     'number': number,
@@ -1023,7 +1032,7 @@ def bulk_send():
         sent_count = sum(1 for r in results if r['status'] == 'sent')
         failed_count = sum(1 for r in results if r['status'] == 'failed')
         
-        print(f"[BULK SEND] Complete! Sent: {sent_count}, Failed: {failed_count}")
+        logger.info(f"Bulk send complete: {sent_count} sent, {failed_count} failed")
         
         return jsonify({
             'success': True,
@@ -1260,27 +1269,27 @@ def send_bulk_invitations():
         if not invitations:
             return jsonify({'success': False, 'error': 'No valid invitations found in CSV'}), 400
         
-        print(f"[INVITATIONS] Found {len(invitations)} invitations to send")
+        logger.info(f"Found {len(invitations)} invitations to send")
         
         results = []
         import time
         
         for i, inv in enumerate(invitations):
             try:
-                print(f"[INVITATIONS] Processing {i+1}/{len(invitations)}: {inv['name']} -> {inv['number']}")
+                logger.info(f"Processing invitation {i+1}/{len(invitations)}: {inv['name']} -> {inv['number']}")
                 
                 # Generate PDF
-                print(f"[INVITATIONS] Calling PDF API: {PDF_GENERATOR_URL}")
+                logger.debug(f"Calling PDF API: {PDF_GENERATOR_URL}")
                 response = requests.post(PDF_GENERATOR_URL, json={
                     'name': inv['name'],
                     'sangeet': inv['sangeet'],
                     'jaan': inv['jaan']
                 }, timeout=30)
                 
-                print(f"[INVITATIONS] PDF API response status: {response.status_code}")
+                logger.debug(f"PDF API response status: {response.status_code}")
                 
                 if response.status_code != 200:
-                    print(f"[INVITATIONS] PDF generation failed for {inv['name']}")
+                    logger.error(f"PDF generation failed for {inv['name']}")
                     results.append({
                         'name': inv['name'],
                         'number': inv['number'],
@@ -1296,7 +1305,7 @@ def send_bulk_invitations():
                     # JSON response with base64 PDF
                     result = response.json()
                     if not result.get('success'):
-                        print(f"[INVITATIONS] PDF API returned error for {inv['name']}")
+                        logger.error(f"PDF API returned error for {inv['name']}")
                         results.append({
                             'name': inv['name'],
                             'number': inv['number'],
@@ -1310,7 +1319,7 @@ def send_bulk_invitations():
                     pdf_data = response.content
                 
                 # Save PDF to uploads/documents
-                print(f"[INVITATIONS] Saving PDF for {inv['name']}")
+                logger.debug(f"Saving PDF for {inv['name']}")
                 pdf_filename = f"{inv['name']}.pdf"
                 pdf_subfolder = os.path.join(UPLOAD_FOLDER, 'documents')
                 os.makedirs(pdf_subfolder, exist_ok=True)
@@ -1319,13 +1328,16 @@ def send_bulk_invitations():
                 with open(pdf_path, 'wb') as f:
                     f.write(pdf_data)
                 
-                print(f"[INVITATIONS] PDF saved to {pdf_path}")
+                logger.debug(f"PDF saved to {pdf_path}")
                 
                 # Send via WhatsApp (PDF = document type)
-                print(f"[INVITATIONS] Sending WhatsApp to {inv['number']}")
+                logger.info(f"Sending WhatsApp invitation to {inv['number']}")
                 success = whatsapp_bot.send_message_with_attachment(inv['number'], message, pdf_path, 'document')
                 status = 'sent' if success else 'failed'
-                print(f"[INVITATIONS] WhatsApp send result: {status}")
+                if success:
+                    logger.info(f"Invitation sent to {inv['number']}")
+                else:
+                    logger.warning(f"Failed to send invitation to {inv['number']}")
                 
                 # Log to history
                 db.add_message_history(inv['number'], f"[Invitation PDF: {pdf_filename}] {message}", status)
@@ -1338,11 +1350,11 @@ def send_bulk_invitations():
                 
                 # Delay between messages (except for last one)
                 if i < len(invitations) - 1:
-                    print(f"[INVITATIONS] Waiting {delay} seconds...")
+                    logger.debug(f"Waiting {delay} seconds before next invitation...")
                     time.sleep(delay)
                     
             except Exception as e:
-                print(f"[INVITATIONS] ERROR for {inv['name']}: {str(e)}")
+                logger.error(f"Error sending invitation to {inv['name']}: {str(e)}", exc_info=True)
                 results.append({
                     'name': inv['name'],
                     'number': inv['number'],
@@ -1353,7 +1365,7 @@ def send_bulk_invitations():
         sent_count = sum(1 for r in results if r['status'] == 'sent')
         failed_count = sum(1 for r in results if r['status'] == 'failed')
         
-        print(f"[INVITATIONS] Complete! Sent: {sent_count}, Failed: {failed_count}")
+        logger.info(f"Invitations complete: {sent_count} sent, {failed_count} failed")
         
         return jsonify({
             'success': True,
@@ -1364,9 +1376,15 @@ def send_bulk_invitations():
         })
         
     except Exception as e:
+        logger.error(f"Invitations error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':
+    logger.info("=" * 50)
+    logger.info("WhatsApp Automation Bot Starting")
+    logger.info("=" * 50)
+    logger.info(f"Server: http://localhost:5001")
+    logger.info(f"Data folder: {DATA_FOLDER}")
+    logger.info(f"Upload folder: {UPLOAD_FOLDER}")
     app.run(debug=True, host='0.0.0.0', port=5001)
-
