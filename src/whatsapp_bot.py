@@ -58,6 +58,15 @@ class WhatsAppBot:
             'document_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div/input',
             'photo_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[2]/li/div/input',
             'audio_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[4]/li/div/input',
+            'caption_input': [
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]/p',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div[1]/div[1]',
+            ],
+            'attachment_send_button': [
+                '//span[@data-icon="send"]/..',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/div/div'
+            ],
             'send_button': [
                 '//span[@data-icon="send"]/..',
                 '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/div/div'
@@ -74,6 +83,15 @@ class WhatsAppBot:
             'document_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div/input',
             'photo_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[2]/li/div/input',
             'audio_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[4]/li/div/input',
+            'caption_input': [
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div[1]/div[1]',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div[1]/div',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]/p',
+            ],
+            'attachment_send_button': [
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/div/div',
+                '//span[@data-icon="send"]/..',
+            ],
             'send_button': [
                 '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[4]/div/span/button',
                 '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[4]/div/span/button/div/div/div[1]/span',
@@ -91,6 +109,16 @@ class WhatsAppBot:
             'document_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[1]/li/div/input',
             'photo_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[2]/li/div/input',
             'audio_input': '//*[@id="app"]/div/div/span[6]/div/ul/div/div/div[4]/li/div/input',
+            'caption_input': [
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div[1]/div[1]',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div[1]/div',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]/p',
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]',
+            ],
+            'attachment_send_button': [
+                '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[2]/div[2]/div/div',
+                '//span[@data-icon="send"]/..',
+            ],
             'send_button': [
                 '//*[@id="main"]/footer/div[1]/div/span/div/div[2]/div/div[4]/div/span/button',
                 '//span[@data-icon="send"]/..',
@@ -105,7 +133,6 @@ class WhatsAppBot:
         'side_panel': '//div[@id="side"]',
         'message_input': ['//div[@contenteditable="true"][@data-tab="10"]', '//div[@title="Type a message"]', '//footer//div[@contenteditable="true"]'],
         'file_input': '//input[@type="file"]',
-        'caption_input': ['//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div[1]/div[1]', '//div[@contenteditable="true"][@data-tab="10"]'],
         'invalid_number': ['//*[contains(text(), "Phone number shared via url is invalid")]', '//*[contains(text(), "invalid")]'],
     }
 
@@ -427,42 +454,50 @@ class WhatsAppBot:
             if message:
                 caption_added = False
                 
-                # Primary caption XPath (from user)
-                caption_xpath = '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]/p'
+                # Get caption input selectors from profile
+                caption_selectors = self._get_selector('caption_input')
+                if not isinstance(caption_selectors, list):
+                    caption_selectors = [caption_selectors]
                 
-                try:
-                    # Wait for caption input to be present
-                    cap = WebDriverWait(self.driver, 5).until(
-                        EC.presence_of_element_located((By.XPATH, caption_xpath))
-                    )
-                    # Click on the paragraph element
-                    cap.click()
-                    time.sleep(0.3)
-                    # Type the message
-                    cap.send_keys(message)
-                    caption_added = True
-                    print("Caption added successfully")
-                except Exception as e:
-                    print(f"Primary caption method failed: {e}")
-                    
-                    # Fallback: Try clicking parent div and typing
+                # Try each caption selector
+                for caption_xpath in caption_selectors:
+                    if caption_added:
+                        break
                     try:
-                        parent_xpath = '//*[@id="app"]/div/div/div[3]/div/div[3]/div[2]/div/span/div/div/div/div[2]/div/div[1]/div[3]/div/div/div/div[1]/div[1]'
-                        parent = self.driver.find_element(By.XPATH, parent_xpath)
-                        parent.click()
+                        # Wait for caption input to be present
+                        cap = WebDriverWait(self.driver, 3).until(
+                            EC.presence_of_element_located((By.XPATH, caption_xpath))
+                        )
+                        # Click on the element
+                        cap.click()
                         time.sleep(0.3)
+                        # Type the message
+                        cap.send_keys(message)
+                        caption_added = True
+                        print(f"Caption added successfully using: {caption_xpath}")
+                    except Exception as e:
+                        print(f"Caption selector failed: {caption_xpath} - {e}")
+                
+                # Fallback: Try ActionChains if direct input failed
+                if not caption_added:
+                    try:
+                        # Try using ActionChains to type into active element
                         actions = ActionChains(self.driver)
                         actions.send_keys(message).perform()
                         caption_added = True
-                        print("Caption added via parent element")
+                        print("Caption added via ActionChains fallback")
                     except Exception as e2:
-                        print(f"Parent element method failed: {e2}")
+                        print(f"ActionChains fallback failed: {e2}")
                 
                 if not caption_added:
                     print("Warning: Could not add caption, sending without caption")
             
             time.sleep(1)
-            send_btn = self._find_element(self._get_selector('send_button'), timeout=5)
+            # Use attachment_send_button for the send button in attachment dialog
+            send_btn = self._find_element(self._get_selector('attachment_send_button'), timeout=5)
+            if not send_btn:
+                # Fallback to regular send button
+                send_btn = self._find_element(self._get_selector('send_button'), timeout=5)
             if not send_btn:
                 print("Could not find send button")
                 return False
