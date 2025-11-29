@@ -1,6 +1,10 @@
-@echo off@echo off@echo off@echo off
+@echo off@echo off@echo off@echo off@echo off
 
-setlocal EnableDelayedExpansion
+cd /d "%~dp0"
+
+python launcher.pysetlocal EnableDelayedExpansion
+
+pause
 
 chcp 65001 >nul 2>&1chcp 65001 >nul 2>&1
 
