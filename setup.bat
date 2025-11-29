@@ -74,17 +74,18 @@ echo.
 REM Add to Windows Startup
 echo [5/5] Adding to Windows Startup...
 set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
-set "SHORTCUT_NAME=WhatsApp Bot.bat"
+set "VBS_NAME=WhatsApp Bot.vbs"
 set "CURRENT_DIR=%~dp0"
 
+REM Create VBScript to run completely hidden (no window)
 (
-echo @echo off
-echo cd /d "%CURRENT_DIR%"
-echo start /min "" cmd /c "%CURRENT_DIR%run.bat"
-) > "%STARTUP_FOLDER%\%SHORTCUT_NAME%"
+echo Set WshShell = CreateObject^("WScript.Shell"^)
+echo WshShell.CurrentDirectory = "%CURRENT_DIR%"
+echo WshShell.Run """%CURRENT_DIR%run.bat""", 0, False
+) > "%STARTUP_FOLDER%\%VBS_NAME%"
 
 if %ERRORLEVEL% equ 0 (
-    echo       Added to Windows Startup!
+    echo       Added to Windows Startup (hidden)!
 ) else (
     echo       Warning: Could not add to startup. Run as Administrator.
 )
@@ -95,9 +96,9 @@ echo   SETUP COMPLETE!
 echo ============================================
 echo.
 echo   To START the bot: Double-click run.bat
-echo   To STOP the bot:  Close the terminal window
+echo   To STOP the bot:  Use Task Manager (end python.exe)
 echo.
-echo   The bot will auto-start when Windows boots.
+echo   The bot will auto-start HIDDEN when Windows boots.
 echo   To disable: Run remove-from-startup.bat
 echo.
 echo ============================================
