@@ -5,6 +5,17 @@
 
 {% block content %}
 <div class="schedule-page">
+    <!-- Bot Status Banner -->
+    <div id="botStatusBanner" class="bot-status-banner bot-status-checking">
+        <div class="status-content">
+            <i class="fas fa-circle-notch fa-spin status-icon"></i>
+            <span class="status-text">Checking bot status...</span>
+        </div>
+        <a href="/" class="btn btn-primary btn-sm" id="initBotBtn" style="display: none;">
+            <i class="fas fa-power-off"></i> Initialize Bot
+        </a>
+    </div>
+
     <div class="row">
         <div class="col-md-6">
             <div class="card">
@@ -30,9 +41,12 @@
                         <label for="scheduledTime">Scheduled Time</label>
                         <input type="datetime-local" id="scheduledTime" name="scheduled_time" 
                                class="form-control" required>
+                        <small class="timezone-info">
+                            <i class="fas fa-globe"></i> Timezone: <span id="userTimezone"></span>
+                        </small>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="scheduleBtn">
                         <i class="fas fa-clock"></i> Schedule Message
                     </button>
                 </form>
@@ -64,8 +78,150 @@
         </div>
     </div>
 </div>
+
+<style>
+.bot-status-banner {
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.bot-status-banner .status-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.bot-status-banner .status-icon {
+    font-size: 18px;
+}
+.bot-status-checking {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+.bot-status-connected {
+    background: #d4edda;
+    border: 1px solid #28a745;
+    color: #155724;
+}
+.bot-status-disconnected {
+    background: #f8d7da;
+    border: 1px solid #dc3545;
+    color: #721c24;
+}
+.timezone-info {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/schedule.js') }}"></script>
+<script>
+let botConnected = false;
+
+// Check bot status on page load
+async function checkBotStatus() {
+    const banner = document.getElementById('botStatusBanner');
+    const statusText = banner.querySelector('.status-text');
+    const statusIcon = banner.querySelector('.status-icon');
+    const initBtn = document.getElementById('initBotBtn');
+    const scheduleBtn = document.getElementById('scheduleBtn');
+    
+    try {
+        const response = await fetch('/api/check-login');
+        const data = await response.json();
+        
+        banner.classList.remove('bot-status-checking', 'bot-status-connected', 'bot-status-disconnected');
+        
+        if (data.logged_in) {
+            banner.classList.add('bot-status-connected');
+            statusIcon.className = 'fas fa-check-circle status-icon';
+            statusText.textContent = 'Bot connected and ready to send messages';
+            initBtn.style.display = 'none';
+            scheduleBtn.disabled = false;
+            botConnected = true;
+        } else if (data.status === 'waiting_for_scan') {
+            banner.classList.add('bot-status-disconnected');
+            statusIcon.className = 'fas fa-qrcode status-icon';
+            statusText.textContent = 'Bot initialized - Please scan QR code first';
+            initBtn.style.display = 'inline-block';
+            initBtn.innerHTML = '<i class="fas fa-qrcode"></i> Scan QR Code';
+            scheduleBtn.disabled = true;
+            botConnected = false;
+        } else {
+            banner.classList.add('bot-status-disconnected');
+            statusIcon.className = 'fas fa-exclamation-triangle status-icon';
+            statusText.textContent = 'Bot not initialized - Please initialize first';
+            initBtn.style.display = 'inline-block';
+            initBtn.innerHTML = '<i class="fas fa-power-off"></i> Initialize Bot';
+            scheduleBtn.disabled = true;
+            botConnected = false;
+        }
+    } catch (error) {
+        banner.classList.remove('bot-status-checking');
+        banner.classList.add('bot-status-disconnected');
+        statusIcon.className = 'fas fa-exclamation-triangle status-icon';
+        statusText.textContent = 'Error checking bot status';
+        initBtn.style.display = 'inline-block';
+        scheduleBtn.disabled = true;
+        botConnected = false;
+    }
+}
+
+// Display user's timezone
+function displayTimezone() {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    document.getElementById('userTimezone').textContent = timezone;
+    
+    // Set minimum time to now
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
+    document.getElementById('scheduledTime').min = localISOTime;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkBotStatus();
+    displayTimezone();
+    setInterval(checkBotStatus, 10000); // Check every 10 seconds
+});
+
+// Schedule form submission
+document.getElementById('scheduleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!botConnected) {
+        showAlert('Please initialize and connect the bot first', 'warning');
+        return;
+    }
+    
+    const phone = document.getElementById('schedulePhone').value;
+    const message = document.getElementById('scheduleMessage').value;
+    const scheduledTime = document.getElementById('scheduledTime').value;
+    
+    try {
+        const response = await fetch('/api/schedule-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, message, scheduled_time: scheduledTime })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Message scheduled successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert(data.error || 'Failed to schedule message', 'error');
+        }
+    } catch (error) {
+        showAlert('Error scheduling message: ' + error.message, 'error');
+    }
+});
+</script>
 {% endblock %}

@@ -8,6 +8,17 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/bulk.css') }}">
 
 <div class="bulk-container">
+    <!-- Bot Status Banner -->
+    <div id="botStatusBanner" class="bot-status-banner bot-status-checking">
+        <div class="status-content">
+            <i class="fas fa-circle-notch fa-spin status-icon"></i>
+            <span class="status-text">Checking bot status...</span>
+        </div>
+        <a href="/" class="btn btn-primary btn-sm" id="initBotBtn" style="display: none;">
+            <i class="fas fa-power-off"></i> Initialize Bot
+        </a>
+    </div>
+
     <!-- Contact Input Section -->
     <div class="card contact-input-card">
         <div class="card-header">
@@ -132,8 +143,17 @@
                 </div>
             </div>
             
+            <!-- Not Connected Warning -->
+            <div id="notConnectedWarning" class="not-connected-warning" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Bot not connected. Please initialize and scan QR code first.</span>
+                <a href="/" class="btn btn-success btn-sm">
+                    <i class="fas fa-power-off"></i> Go to Dashboard
+                </a>
+            </div>
+            
             <div class="send-buttons">
-                <button id="startSendBtn" class="btn btn-success btn-lg">
+                <button id="startSendBtn" class="btn btn-success btn-lg" disabled>
                     <i class="fas fa-play"></i> Start Sending
                 </button>
                 <button id="pauseSendBtn" class="btn btn-warning btn-lg" style="display: none;">

@@ -7,6 +7,7 @@ let uploadedAttachment = null;
 let isSending = false;
 let isPaused = false;
 let appSettings = { default_country_code: '91' };
+let botConnected = false;
 
 // Load settings on page load
 async function loadAppSettings() {
@@ -21,12 +22,69 @@ async function loadAppSettings() {
     }
 }
 
+// Check if bot is initialized and logged in
+async function checkBotStatus() {
+    const banner = document.getElementById('botStatusBanner');
+    const initBtn = document.getElementById('initBotBtn');
+    const startBtn = document.getElementById('startSendBtn');
+    const warning = document.getElementById('notConnectedWarning');
+    
+    try {
+        const response = await fetch('/api/check-login');
+        const data = await response.json();
+        
+        if (data.logged_in) {
+            // Bot is connected
+            botConnected = true;
+            banner.className = 'bot-status-banner bot-status-connected';
+            banner.querySelector('.status-icon').className = 'fas fa-check-circle status-icon';
+            banner.querySelector('.status-text').textContent = 'WhatsApp Connected - Ready to send messages';
+            initBtn.style.display = 'none';
+            startBtn.disabled = false;
+            warning.style.display = 'none';
+        } else if (data.status === 'waiting_for_scan') {
+            // Bot initialized but waiting for QR scan
+            botConnected = false;
+            banner.className = 'bot-status-banner bot-status-disconnected';
+            banner.querySelector('.status-icon').className = 'fas fa-qrcode status-icon';
+            banner.querySelector('.status-text').textContent = 'Please scan QR code on Dashboard';
+            initBtn.style.display = 'inline-flex';
+            initBtn.innerHTML = '<i class="fas fa-qrcode"></i> Scan QR Code';
+            startBtn.disabled = true;
+            warning.style.display = 'flex';
+        } else {
+            // Bot not initialized
+            botConnected = false;
+            banner.className = 'bot-status-banner bot-status-disconnected';
+            banner.querySelector('.status-icon').className = 'fas fa-exclamation-circle status-icon';
+            banner.querySelector('.status-text').textContent = 'Bot not initialized - Please start the bot first';
+            initBtn.style.display = 'inline-flex';
+            initBtn.innerHTML = '<i class="fas fa-power-off"></i> Initialize Bot';
+            startBtn.disabled = true;
+            warning.style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('Error checking bot status:', error);
+        botConnected = false;
+        banner.className = 'bot-status-banner bot-status-disconnected';
+        banner.querySelector('.status-icon').className = 'fas fa-exclamation-triangle status-icon';
+        banner.querySelector('.status-text').textContent = 'Could not check bot status';
+        initBtn.style.display = 'inline-flex';
+        startBtn.disabled = true;
+        warning.style.display = 'flex';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     loadAppSettings();
+    checkBotStatus();
     initTabSwitching();
     initEventListeners();
     loadSavedContacts();
     updateContactCount();
+    
+    // Check bot status every 10 seconds
+    setInterval(checkBotStatus, 10000);
 });
 
 function initTabSwitching() {
@@ -450,6 +508,13 @@ function clearAttachment() {
 }
 
 async function startBulkSend() {
+    // Check bot status first
+    if (!botConnected) {
+        showAlert('Bot not connected! Please initialize the bot and scan QR code first.', 'error');
+        checkBotStatus();
+        return;
+    }
+    
     // Filter out contacts with invalid/empty phone numbers
     const validContacts = contacts.filter(c => c.phone && c.phone.trim().length >= 10);
     
